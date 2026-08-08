@@ -1,6 +1,10 @@
 export { createPainPointMiner } from "./lib/create-pain-point-miner.js";
 export { createFixtureEmbeddings } from "./lib/fixture-embeddings.js";
 export {
+  createFixtureFollowOnFetcher,
+  createFixtureStoreReviewSource,
+} from "./lib/fixture-follow-on-store.js";
+export {
   createFixtureSignalSources,
   defaultFixtureEvidence,
 } from "./lib/fixture-signal-source.js";
@@ -12,14 +16,20 @@ export type {
   CandidateCluster,
   Embeddings,
   EvidenceRef,
+  FollowOnFetcher,
+  FollowOnKind,
+  FollowOnTarget,
   Intent,
+  MentionedApp,
   PainPointMiner,
   PainPointMinerDeps,
   RunArtifact,
   RunInput,
   SignalSource,
+  StoreReviewSource,
 } from "./lib/types.js";
 export {
   DEFAULT_COUNT_GATE_THRESHOLD,
   DEFAULT_SATURATION_STOP_K,
+  FORUM_SIGNAL_SOURCES,
 } from "./lib/types.js";

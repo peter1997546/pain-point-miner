@@ -20,7 +20,9 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Signal Source and embedding adapters are injectable behind that seam (fixtures for tests / local inspection; live network adapters come later).
+`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Signal Source, embedding, Follow-on Fetch, and Store Second Pass adapters are injectable behind that seam (fixtures for tests / local inspection; live network adapters come later).
+
+Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop. Deepened Evidence feeds the same clustering and gates.
 
 ### Defaults
 
@@ -29,6 +31,7 @@ const artifact = await miner.run({});
 | `run()` / `run({})` / omitted `intent` | Empty Intent `{}` |
 | Count Gate | Evidence Count ≥ **5** |
 | Saturation Stop | Halt once **20** Count-Gated clusters exist |
+| Follow-on / Store Second Pass | Skipped when those ports are omitted |
 | Script CLI Signal Sources / Embeddings | Built-in fixtures (no live network / LLM) |
 | Script CLI `--format` | `markdown` |
 
