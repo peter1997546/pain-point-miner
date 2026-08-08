@@ -14,4 +14,4 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 
 ### Pain Point Miner (product Skill)
 
-Script mining + per-cluster Analysis Pass fan-out: `.agents/skills/pain-point-miner/SKILL.md` (ADR-0009 / ADR-0011). Call the Script; never dump the full scrape into one analysis step.
+Interview Intent first, then Script mining + per-cluster Analysis Pass fan-out: `.agents/skills/pain-point-miner/SKILL.md` (ADR-0009 / ADR-0011 / ADR-0016). Call the Script; never dump the full scrape into one analysis step; never assume empty Intent without asking.
