@@ -152,14 +152,7 @@ async function extractVectors(
     return vectors;
   }
 
-  // Fallback: embed one-by-one when the pipeline rejects batch input shape.
-  const vectors: number[][] = [];
-  for (const text of texts) {
-    const single = await extractor(text, {
-      pooling: "mean",
-      normalize: true,
-    });
-    vectors.push(Array.from(single.data));
-  }
-  return vectors;
+  throw new Error(
+    `Local embeddings returned unexpected dims: [${dims.join(", ")}]`,
+  );
 }
