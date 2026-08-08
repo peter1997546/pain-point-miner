@@ -110,9 +110,12 @@ function briefFor(clusterId: string, overrides: Partial<Brief> = {}): Brief {
 
 function recordingAnalysisPass(
   decide: (input: AnalysisPassInput) => AnalysisOutcome,
-): AnalysisPass {
+): AnalysisPass & { calls: AnalysisPassInput[] } {
+  const calls: AnalysisPassInput[] = [];
   return {
+    calls,
     async analyze(input) {
+      calls.push(input);
       return decide(input);
     },
   };
@@ -457,6 +460,8 @@ describe("Script CLI RunInput wiring", () => {
         "json",
         "--out",
         outPath,
+        "--theme",
+        FILLED_INTENT.theme!,
         "--competition-filter-threshold",
         "0.5",
       ],
@@ -470,14 +475,41 @@ describe("Script CLI RunInput wiring", () => {
 
     expect(code).toBe(0);
     const written = JSON.parse(await readFile(outPath, "utf8")) as {
+      intent: Intent;
       briefs: { competitionDensity: number }[];
       visibleBriefs: { competitionDensity: number }[];
       hiddenByCompetitionFilter: { competitionDensity: number }[];
     };
+    expect(written.intent).toEqual({ theme: FILLED_INTENT.theme });
+    expect(analysisPass.calls).toHaveLength(2);
+    for (const call of analysisPass.calls) {
+      expect(call.intent).toEqual({ theme: FILLED_INTENT.theme });
+    }
     expect(written.briefs).toHaveLength(2);
     expect(written.visibleBriefs).toHaveLength(1);
     expect(written.visibleBriefs[0]!.competitionDensity).toBe(0.2);
     expect(written.hiddenByCompetitionFilter).toHaveLength(1);
     expect(written.hiddenByCompetitionFilter[0]!.competitionDensity).toBe(0.9);
+  });
+
+  it("rejects non-positive Count Gate / Saturation Stop overrides", async () => {
+    const err: string[] = [];
+    const code = await runCli(
+      ["--count-gate-threshold", "0", "--format", "json"],
+      {
+        signalSources: createTestSignalSources(),
+        stdout: { write() {} },
+        stderr: {
+          write(chunk: string) {
+            err.push(chunk);
+            return true;
+          },
+        },
+      },
+    );
+    expect(code).toBe(1);
+    expect(err.join("")).toContain(
+      "--count-gate-threshold requires a number greater than 0",
+    );
   });
 });

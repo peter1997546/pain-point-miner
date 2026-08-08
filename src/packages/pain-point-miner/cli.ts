@@ -35,6 +35,7 @@ export type CliIo = {
   /** Overrides for the `--live` composition (injectable doubles / recordings). */
   liveDiscovery?: LiveDiscoveryMinerDeps;
   stdout?: { write(chunk: string): unknown };
+  stderr?: { write(chunk: string): unknown };
 };
 
 type ParsedCli = {
@@ -62,11 +63,20 @@ function requireValue(flag: string, value: string | undefined): string {
   return value;
 }
 
-function parsePositiveNumber(flag: string, value: string | undefined): number {
+function parseFiniteNumber(flag: string, value: string | undefined): number {
   const raw = requireValue(flag, value);
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) {
     throw new Error(`${flag} requires a finite number`);
+  }
+  return parsed;
+}
+
+/** Count Gate / Saturation Stop K — glossary defaults are positive integers. */
+function parsePositiveNumber(flag: string, value: string | undefined): number {
+  const parsed = parseFiniteNumber(flag, value);
+  if (!(parsed > 0)) {
+    throw new Error(`${flag} requires a number greater than 0`);
   }
   return parsed;
 }
@@ -148,7 +158,7 @@ function parseArgs(argv: string[]): ParsedCli {
       continue;
     }
     if (arg === "--competition-filter-threshold") {
-      competitionFilterThreshold = parsePositiveNumber(
+      competitionFilterThreshold = parseFiniteNumber(
         "--competition-filter-threshold",
         argv[i + 1],
       );
@@ -261,6 +271,7 @@ export async function runCli(
   io: CliIo = {},
 ): Promise<number> {
   const stdout = io.stdout ?? process.stdout;
+  const stderr = io.stderr ?? process.stderr;
 
   try {
     const { format, outPath, skillHandoff, live, runInput } = parseArgs(argv);
@@ -286,7 +297,7 @@ export async function runCli(
       return 0;
     }
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${message}\n`);
+    stderr.write(`${message}\n`);
     return 1;
   }
 }
