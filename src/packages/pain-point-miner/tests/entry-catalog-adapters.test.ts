@@ -78,7 +78,7 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
       "wish",
       "tool for",
       "why no",
-      "spreadsheet",
+      "spreadsheet workaround",
       "how do you handle",
     ]);
     expect([...ENTRY_CATALOG_HN_ASK_QUERIES].length).toBeGreaterThan(0);

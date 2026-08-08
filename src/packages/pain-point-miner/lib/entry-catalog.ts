@@ -19,7 +19,7 @@ export const ENTRY_CATALOG_REDDIT_DEMAND_QUERIES = [
   "wish",
   "tool for",
   "why no",
-  "spreadsheet",
+  "spreadsheet workaround",
   "how do you handle",
 ] as const;
 

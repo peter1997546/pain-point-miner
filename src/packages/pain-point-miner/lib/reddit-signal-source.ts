@@ -3,12 +3,11 @@ import {
   ENTRY_CATALOG_REDDIT_DEMAND_QUERIES,
 } from "./entry-catalog.js";
 import type { JsonHttpClient } from "./json-http-client.js";
+import { asString, isRecord } from "./parse-unknown.js";
 import type { EvidenceRef, SignalSource } from "./types.js";
 
 export type RedditSignalSourceDeps = {
   http: JsonHttpClient;
-  boards?: readonly string[];
-  queries?: readonly string[];
 };
 
 type RedditPostData = {
@@ -18,14 +17,6 @@ type RedditPostData = {
   subreddit?: unknown;
   permalink?: unknown;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
 
 function parseRedditListing(payload: unknown): EvidenceRef[] {
   if (!isRecord(payload) || !isRecord(payload.data)) {
@@ -75,23 +66,20 @@ function redditSearchUrl(board: string, query: string): string {
 
 /**
  * Reddit Entry Catalog Signal Source — primary boards × demand queries.
- * Per-request failures degrade to an empty batch for that URL (ADR graceful
- * degradation) so one broken search does not void the adapter.
+ * Per-request failures degrade to an empty batch for that URL so one broken
+ * search does not void the adapter (spec #4 graceful degradation).
  */
 export function createRedditSignalSource(
   deps: RedditSignalSourceDeps,
 ): SignalSource {
-  const boards = deps.boards ?? ENTRY_CATALOG_REDDIT_BOARDS;
-  const queries = deps.queries ?? ENTRY_CATALOG_REDDIT_DEMAND_QUERIES;
-
   return {
     name: "reddit",
     async collect() {
       const evidence: EvidenceRef[] = [];
       const seen = new Set<string>();
 
-      for (const board of boards) {
-        for (const query of queries) {
+      for (const board of ENTRY_CATALOG_REDDIT_BOARDS) {
+        for (const query of ENTRY_CATALOG_REDDIT_DEMAND_QUERIES) {
           const url = redditSearchUrl(board, query);
           try {
             const payload = await deps.http.getJson(url);
