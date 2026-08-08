@@ -135,7 +135,7 @@ export type AnalysisPassInput = {
 };
 
 /**
- * Injectable Analysis Pass port (test double first; live LLM later).
+ * Injectable Analysis Pass port (test double or `createLlmAnalysisPass`).
  * Must be invoked once per gated cluster — never with the full scrape blob
  * or all clusters packed into one call (ADR-0011).
  */

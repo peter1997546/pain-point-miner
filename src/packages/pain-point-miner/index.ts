@@ -49,6 +49,17 @@ export {
   toSkillMiningHandoff,
   type SkillMiningHandoff,
 } from "./lib/skill-mining-handoff.js";
+export {
+  ANALYSIS_PASS_SYSTEM_PROMPT,
+  createLlmAnalysisPass,
+  type LlmAnalysisPassDeps,
+} from "./lib/llm-analysis-pass.js";
+export {
+  createOpenAiCompatibleLlmClient,
+  type LlmClient,
+  type LlmCompletionRequest,
+  type OpenAiCompatibleLlmClientInit,
+} from "./lib/llm-client.js";
 export type {
   AnalysisOutcome,
   AnalysisPass,
