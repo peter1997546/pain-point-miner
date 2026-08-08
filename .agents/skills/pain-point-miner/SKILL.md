@@ -59,7 +59,7 @@ Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gate
 
 **Priority for live sources:** token-free paths first (Reddit, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; note skips in the Run Report later.
 
-**Embeddings:** use the free/local `Embeddings` implementation baked for Cloud Agent (ADR-0012). Do **not** treat `OPENAI_API_KEY` / paid embedding APIs as the product requirement. (If the Script still requires a paid key because local embeddings are not wired yet, stop and implement/fix the free path rather than normalizing paid APIs.)
+**Embeddings:** `--live` defaults to free/local `createLocalEmbeddings` (ADR-0012; model `Xenova/bge-small-en-v1.5`, cache `PPM_EMBEDDINGS_CACHE_DIR` / `.pain-point-miner/models`). Do **not** treat `OPENAI_API_KEY` / paid embedding APIs as the product requirement. Prefer snapshot-baked weights (ticket #37); OpenAI-compatible is experimental only (`PPM_EMBEDDINGS_BACKEND=openai-compatible`).
 
 **Done when:** a Skill handoff exists with `gatedClusters` (Count Gate survivors). Ungated clusters never enter Analysis Pass.
 

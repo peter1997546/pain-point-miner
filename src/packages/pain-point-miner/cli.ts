@@ -15,6 +15,7 @@ import {
   type FollowOnFetcher,
   type Intent,
   type LiveDiscoveryMinerDeps,
+  type LiveEmbeddingsBackend,
   type RunInput,
   type SignalSource,
   type StoreReviewSource,
@@ -197,15 +198,17 @@ emits a RunArtifact. Omitted Intent / threshold flags keep documented defaults
 Default (no --live): fixture Signal Sources / Embeddings / Follow-on / Store
 (no live network or embedding API) for CI and local inspection.
 
---live: Entry Catalog cold start + Follow-on Fetch / Store Second Pass + live
-Embeddings (OPENAI_API_KEY required). Optional PRODUCT_HUNT_TOKEN for PH
-Follow-on. Does not use hash-only fixture Embeddings.
+--live: Entry Catalog cold start + Follow-on Fetch / Store Second Pass + free/local
+Embeddings (ADR-0012; no paid embedding API key). Optional experimental
+OpenAI-compatible backend via PPM_EMBEDDINGS_BACKEND=openai-compatible and
+OPENAI_API_KEY. Optional PRODUCT_HUNT_TOKEN for PH Follow-on. Does not use
+hash-only fixture Embeddings.
 
 Intent fields are preference notes only — they do not whitelist, drop, or
 invent Signal Sources / crawl targets.
 
 Options:
-  --live                            Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
+  --live                            Live discovery (Entry Catalog + Follow-on/Store + local Embeddings)
   --format                          Output format: json|markdown (default: markdown)
   --handoff                         skill — emit condensed gated clusters for Skill Analysis Pass
                                     (JSON only; omits full scrape evidence[])
@@ -238,19 +241,30 @@ function buildMiner(live: boolean, io: CliIo) {
 
   const env = io.env ?? process.env;
   const fromLive = io.liveDiscovery ?? {};
+  const embeddingsBackend =
+    fromLive.embeddingsBackend ??
+    parseEmbeddingsBackend(env.PPM_EMBEDDINGS_BACKEND);
   const apiKey = fromLive.apiKey ?? env.OPENAI_API_KEY;
   const embeddingModel = fromLive.embeddingModel ?? env.OPENAI_EMBEDDING_MODEL;
   const productHuntAccessToken =
     fromLive.productHuntAccessToken ?? env.PRODUCT_HUNT_TOKEN;
+  const localCacheDir =
+    fromLive.localEmbeddings?.cacheDir ?? env.PPM_EMBEDDINGS_CACHE_DIR;
 
   // Top-level CliIo ports override liveDiscovery bag (tests inject either).
   const liveDeps: LiveDiscoveryMinerDeps = {
     ...fromLive,
+    ...(embeddingsBackend !== undefined ? { embeddingsBackend } : {}),
     ...(apiKey !== undefined ? { apiKey } : {}),
     ...(embeddingModel !== undefined ? { embeddingModel } : {}),
     ...(productHuntAccessToken !== undefined
       ? { productHuntAccessToken }
       : {}),
+    localEmbeddings: {
+      ...(fromLive.localEmbeddings ?? {}),
+      ...(localCacheDir !== undefined ? { cacheDir: localCacheDir } : {}),
+      env,
+    },
     ...(io.signalSources !== undefined
       ? { signalSources: io.signalSources }
       : {}),
@@ -264,6 +278,20 @@ function buildMiner(live: boolean, io: CliIo) {
   };
 
   return createLiveDiscoveryMiner(liveDeps);
+}
+
+function parseEmbeddingsBackend(
+  value: string | undefined,
+): LiveEmbeddingsBackend | undefined {
+  if (value === undefined || value === "" || value === "local") {
+    return value === "local" ? "local" : undefined;
+  }
+  if (value === "openai-compatible") {
+    return "openai-compatible";
+  }
+  throw new Error(
+    `Unsupported PPM_EMBEDDINGS_BACKEND: ${value} (use local|openai-compatible)`,
+  );
 }
 
 export async function runCli(

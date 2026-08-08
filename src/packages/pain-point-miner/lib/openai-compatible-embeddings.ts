@@ -12,8 +12,9 @@ export type OpenAiCompatibleEmbeddingsInit = {
 
 /**
  * OpenAI Embeddings–compatible client implementing the injectable `Embeddings`
- * port (no SDK dependency). Tests / CI inject `fetchImpl` with recordings;
- * live runs use real fetch. Script CLI defaults remain fixture Embeddings.
+ * port (no SDK dependency). Optional / experimental — the product live path
+ * defaults to free/local Embeddings (ADR-0012). Tests / CI inject `fetchImpl`
+ * with recordings. Script CLI without `--live` stays on fixture Embeddings.
  */
 export function createOpenAiCompatibleEmbeddings(
   init: OpenAiCompatibleEmbeddingsInit,
