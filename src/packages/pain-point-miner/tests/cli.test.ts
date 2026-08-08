@@ -91,4 +91,32 @@ describe("Script CLI", () => {
     expect(output).toContain("# Pain Point Miner RunArtifact");
     expect(output).toContain(knownEvidence[0]!.url);
   });
+
+  it("emits condensed Skill handoff JSON without full scrape evidence", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ppm-cli-handoff-"));
+    tempDirs.push(dir);
+    const outPath = join(dir, "handoff.json");
+
+    const code = await runCli(
+      ["--format", "json", "--handoff", "skill", "--out", outPath],
+      {
+        signalSources: createTestSignalSources(),
+        stdout: { write() {} },
+      },
+    );
+
+    expect(code).toBe(0);
+    const written = JSON.parse(await readFile(outPath, "utf8")) as {
+      intent: unknown;
+      gatedClusters: unknown[];
+      saturationStopped: boolean;
+      evidence?: unknown;
+      candidateClusters?: unknown;
+    };
+    expect(written.intent).toEqual({});
+    expect(Array.isArray(written.gatedClusters)).toBe(true);
+    expect(typeof written.saturationStopped).toBe("boolean");
+    expect(written).not.toHaveProperty("evidence");
+    expect(written).not.toHaveProperty("candidateClusters");
+  });
 });

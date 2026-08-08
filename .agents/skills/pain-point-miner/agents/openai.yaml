@@ -1,0 +1,3 @@
+interface:
+  display_name: "Pain Point Miner"
+  short_description: "Script mining + per-cluster Analysis Pass fan-out"
