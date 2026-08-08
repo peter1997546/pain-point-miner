@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cli": "tsx src/packages/pain-point-miner/cli.ts",
+    "bake:local-embeddings": "tsx scripts/bake-local-embeddings.ts",
     "check": "npm run typecheck && npm test"
   },
   "repository": {

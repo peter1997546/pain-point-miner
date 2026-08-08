@@ -58,6 +58,18 @@ npm run cli -- --live --format json --out artifact.json
 
 Without `--live`, Script CLI keeps built-in fixtures (no live network / embedding API) for CI and local inspection. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH Follow-on. CI injects local Embeddings doubles / recordings into `createLiveDiscoveryMiner` — no Hub download or paid API in tests.
 
+### Baking local Embeddings into the Cloud environment snapshot
+
+Cloud Agent **environment install** downloads `Xenova/bge-small-en-v1.5` into the same cache `createLocalEmbeddings` reads (ADR-0012 / ticket #37), so subsequent runs do not re-download weights on the happy path.
+
+```bash
+# Idempotent — writes under .pain-point-miner/models (gitignored)
+npm run bake:local-embeddings
+# optional: PPM_EMBEDDINGS_CACHE_DIR=/path/to/models npm run bake:local-embeddings
+```
+
+Repo-managed Cloud install (`.cursor/environment.json`) runs `npm ci && npm run bake:local-embeddings`. Override the cache with `PPM_EMBEDDINGS_CACHE_DIR`. Do not vendor model weights into git; tests keep using injectable `embedBatch` / `populate` doubles.
+
 ### Defaults
 
 | Input | Default |
