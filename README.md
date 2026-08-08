@@ -72,7 +72,7 @@ Script CLI still defaults to built-in fixtures so local/CI inspection stays offl
 
 | Input | Default |
 | --- | --- |
-| `run()` / `run({})` / omitted `intent` | Empty Intent `{}` |
+| `run()` / `run({})` / omitted `intent` | Empty Intent `{}` (optional `theme`, `productShape`, `constraints`, `hardNos`, `successDefinition` are Analysis Pass preference notes only — not crawl filters) |
 | Count Gate | Evidence Count ≥ **5** |
 | Saturation Stop | Halt once **20** Count-Gated clusters exist |
 | Follow-on / Store Second Pass / Analysis Pass | Skipped when those ports are omitted |

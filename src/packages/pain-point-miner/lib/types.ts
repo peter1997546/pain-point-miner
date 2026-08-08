@@ -1,11 +1,21 @@
 /**
  * Optional free-text fields the Builder may fill.
  * Empty Intent is valid — documented default is `{}`.
- * Filled fields must not whitelist or drop Signal Sources (ADR-0004 / ADR-0007).
+ * Filled fields are preference notes for the Analysis Pass only — they must
+ * not whitelist, drop, or invent Signal Sources / crawl targets
+ * (ADR-0004 / ADR-0007).
  */
 export type Intent = {
   /** Optional broad directional preference (e.g. "AI automation"). */
   theme?: string;
+  /** Preferred product shape (e.g. "solo-dev SaaS") — Analysis Pass note only. */
+  productShape?: string;
+  /** Soft constraints (time, budget, channels) — Analysis Pass note only. */
+  constraints?: string;
+  /** Hard nos the Builder will not build — Analysis Pass note only. */
+  hardNos?: string;
+  /** What "success" means for this Builder — Analysis Pass note only. */
+  successDefinition?: string;
 };
 
 /** Input to `PainPointMiner.run`. Omitted / `{}` uses empty Intent defaults. */

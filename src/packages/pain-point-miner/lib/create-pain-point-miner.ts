@@ -160,7 +160,8 @@ export function createPainPointMiner(
       };
 
       for (const source of deps.signalSources) {
-        // Intent is echoed on the artifact but does not select Signal Sources.
+        // Intent preference notes are echoed and forwarded to Analysis Pass only —
+        // they must not select, whitelist, or drop Signal Sources (ADR-0004).
         const batch = await source.collect();
         await ingestBatch(
           state,
@@ -217,6 +218,8 @@ export function createPainPointMiner(
       const analysisOutcomes: AnalysisOutcome[] = [];
 
       // Per-cluster Analysis Pass (ADR-0011) — one gated cluster per call.
+      // Intent (Theme, product shape, constraints, hard nos, success definition)
+      // arrives here as preference notes only.
       if (deps.analysisPass) {
         for (const cluster of gatedClusters) {
           analysisOutcomes.push(

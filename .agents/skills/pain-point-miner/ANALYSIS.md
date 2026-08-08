@@ -7,7 +7,7 @@ Use this only inside a **single** Candidate Cluster analysis step. Do not load s
 - `cluster.id`
 - `cluster.evidence[]` — quotable + linkable items for **this** cluster only
 - `cluster.evidenceCount` / `cluster.signalMix` (pre-analysis hint)
-- Optional Intent (`theme`, …) — preference note only; not a crawl whitelist
+- Optional Intent (`theme`, `productShape`, `constraints`, `hardNos`, `successDefinition`) — preference notes only (e.g. Delivery Cost commentary); not a crawl whitelist
 
 ## Hollow vs Pain Point
 
