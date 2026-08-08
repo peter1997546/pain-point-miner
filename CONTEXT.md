@@ -29,8 +29,8 @@ A concrete public artifact (post, review, thread, issue) pulled from a Signal So
 _Avoid_: Anecdote (unsourced), “market insight” without a source
 
 **Candidate Cluster**:
-A code-grouped set of Evidence items treated as the same underlying complaint for counting. Grouping uses coding-time similarity (structural keys and/or textual similarity), not an LLM vibe pass.
-_Avoid_: Topic (too vague), bucket
+A code-grouped set of Evidence items treated as the same underlying complaint for counting. Grouping uses structural keys plus *meaning* similarity (e.g. embeddings / cosine) — not shared-word overlap as the main signal, and not an LLM “虛不虛” pass.
+_Avoid_: Topic (too vague), bucket, keyword twin
 
 **Evidence Count**:
 The number N of distinct Evidence items in a Candidate Cluster. Computed by code.
@@ -41,8 +41,8 @@ Deterministic rule: Evidence Count ≥ threshold (default 5) before a cluster is
 _Avoid_: Quality filter, vibe check
 
 **Saturation Stop**:
-A run stops crawling when enough Candidate Clusters / Pain Point candidates have already been found for the vagueness of the Intent — e.g. a very loose Intent plus a large problem set means stop, rather than crawling forever. Stop is driven by *what was found*, not by asking the Builder for more restrictions.
-_Avoid_: Fixed page budget (alone), user-imposed result cap
+A run stops crawling when it already has at least **20** Candidate Clusters that passed the Count Gate. Stop is driven by *how much was found*, not by asking the Builder for more restrictions.
+_Avoid_: User-imposed result cap, “Intent vagueness scales K” (rejected)
 
 **Pain Point**:
 A Candidate Cluster that (1) passes the Count Gate and (2) survives the Analysis Pass judgment that it is not Hollow. Volume alone is not enough.

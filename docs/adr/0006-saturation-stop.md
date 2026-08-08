@@ -1,3 +1,3 @@
-# Saturation Stop from findings
+# Saturation Stop at 20 Count-Gated clusters
 
-A run stops when enough Candidate Clusters / problem-set mass has already been found relative to how loose the Intent is — stop is driven by mined data, not by piling restrictions on the Builder to force a small N. Loose Intent + large found set ⇒ stop earlier rather than crawl indefinitely.
+A run stops when at least 20 Candidate Clusters have passed the Count Gate (Evidence Count ≥ 5). Stop is driven by mined volume, not by piling Intent restrictions on the Builder.

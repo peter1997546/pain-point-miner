@@ -1,3 +1,3 @@
-# Code-side similarity for Candidate Clusters
+# Meaning similarity for Candidate Clusters
 
-Evidence is grouped into Candidate Clusters by coding-time similarity (structural keys and textual similarity), not by an LLM pass. Evidence Count and the Count Gate stay deterministic over those clusters. The Analysis Pass judges Hollow vs real after the Count Gate — it does not own primary clustering.
+Evidence is grouped by structural keys plus meaning similarity (embeddings / cosine), not by shared-word overlap as the primary signal. Evidence Count and the Count Gate stay deterministic over those clusters. The Analysis Pass still owns Hollow vs real — clustering is not that judgment.
