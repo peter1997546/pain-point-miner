@@ -2,6 +2,7 @@ import {
   ENTRY_CATALOG_REDDIT_BOARDS,
   ENTRY_CATALOG_REDDIT_DEMAND_QUERIES,
 } from "./entry-catalog.js";
+import { withExtractedHints } from "./extract-evidence-hints.js";
 import type { JsonHttpClient } from "./json-http-client.js";
 import { asString, isRecord } from "./parse-unknown.js";
 import type { EvidenceRef, SignalSource } from "./types.js";
@@ -42,13 +43,15 @@ function parseRedditListing(payload: unknown): EvidenceRef[] {
     const selftext = asString(post.selftext);
     const quote = selftext ? `${title}\n\n${selftext}` : title;
     const path = permalink.startsWith("/") ? permalink : `/${permalink}`;
-    evidence.push({
-      id: `reddit-${id}`,
-      quote,
-      url: `https://www.reddit.com${path}`,
-      signalSource: "reddit",
-      signalKind: "demand-signal",
-    });
+    evidence.push(
+      withExtractedHints({
+        id: `reddit-${id}`,
+        quote,
+        url: `https://www.reddit.com${path}`,
+        signalSource: "reddit",
+        signalKind: "demand-signal",
+      }),
+    );
   }
   return evidence;
 }

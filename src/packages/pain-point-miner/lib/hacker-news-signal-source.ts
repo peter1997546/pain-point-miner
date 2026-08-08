@@ -1,4 +1,5 @@
 import { ENTRY_CATALOG_HN_ASK_QUERIES } from "./entry-catalog.js";
+import { withExtractedHints } from "./extract-evidence-hints.js";
 import type { JsonHttpClient } from "./json-http-client.js";
 import { asString, isRecord } from "./parse-unknown.js";
 import type { EvidenceRef, SignalSource } from "./types.js";
@@ -24,13 +25,15 @@ function parseHnHits(payload: unknown): EvidenceRef[] {
     }
     const storyText = asString(hit.story_text);
     const quote = storyText ? `${title}\n\n${storyText}` : title;
-    evidence.push({
-      id: `hacker-news-${objectID}`,
-      quote,
-      url: `https://news.ycombinator.com/item?id=${objectID}`,
-      signalSource: "hacker-news",
-      signalKind: "demand-signal",
-    });
+    evidence.push(
+      withExtractedHints({
+        id: `hacker-news-${objectID}`,
+        quote,
+        url: `https://news.ycombinator.com/item?id=${objectID}`,
+        signalSource: "hacker-news",
+        signalKind: "demand-signal",
+      }),
+    );
   }
   return evidence;
 }

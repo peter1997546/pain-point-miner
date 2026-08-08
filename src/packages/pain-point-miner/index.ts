@@ -23,10 +23,19 @@ export { createEntryCatalogSignalSources } from "./lib/entry-catalog-signal-sour
 export { createHackerNewsSignalSource } from "./lib/hacker-news-signal-source.js";
 export {
   createFetchHttpClient,
+  createRecordingAdapterHttpClient,
   createRecordingHttpClient,
+  type AdapterHttpClient,
+  type AdapterHttpRecordings,
   type JsonHttpClient,
 } from "./lib/json-http-client.js";
 export { createRedditSignalSource } from "./lib/reddit-signal-source.js";
+export { createAppStoreReviewSource } from "./lib/app-store-review-source.js";
+export { createPlayStoreReviewSource } from "./lib/play-store-review-source.js";
+export { createStoreReviewSource } from "./lib/store-review-source.js";
+export { createProductHuntFollowOnFetcher } from "./lib/product-hunt-follow-on.js";
+export { createIndieHackersFollowOnFetcher } from "./lib/indie-hackers-follow-on.js";
+export { createSourceCatalogFollowOnFetcher } from "./lib/source-catalog-follow-on.js";
 export {
   formatRunArtifact,
   type ArtifactFormat,

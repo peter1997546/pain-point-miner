@@ -201,6 +201,48 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
     expect(hn.length).toBeGreaterThan(0);
   });
 
+  it("Reddit Evidence extracts PH/IH Follow-on URLs and store app links from post text", async () => {
+    const http = createScriptedHttpClient((url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname !== "www.reddit.com") {
+        return { hits: [] };
+      }
+      const board = parsed.pathname.match(/^\/r\/([^/]+)\//)?.[1] ?? "webdev";
+      return redditListing({
+        id: `${board}-links`,
+        title: "wish: better invoicing",
+        subreddit: board,
+        selftext:
+          "Saw https://www.producthunt.com/posts/wave-ish and https://www.indiehackers.com/post/invoice-pain plus https://apps.apple.com/us/app/wave/id999001 and https://play.google.com/store/apps/details?id=com.wave.accounting",
+      });
+    });
+
+    const reddit = createRedditSignalSource({ http });
+    const evidence = await reddit.collect();
+    const withHints = evidence.find((item) =>
+      item.quote.includes("producthunt.com"),
+    );
+    expect(withHints).toBeDefined();
+    expect(withHints!.followOnTargets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "https://www.producthunt.com/posts/wave-ish",
+          kind: "alternative-review",
+        }),
+        expect.objectContaining({
+          url: "https://www.indiehackers.com/post/invoice-pain",
+          kind: "demand-signal",
+        }),
+      ]),
+    );
+    expect(withHints!.mentionedApps).toEqual(
+      expect.arrayContaining([
+        { id: "999001", store: "app-store" },
+        { id: "com.wave.accounting", store: "play" },
+      ]),
+    );
+  });
+
   it("cold-start factory wires Reddit + HN into run without founder boards or PH/IH", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
