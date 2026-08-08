@@ -12,6 +12,8 @@ const PLAY_REVIEWS_URL =
 /** Newest sort — matches google-play-scraper's sort.NEWEST value. */
 const PLAY_SORT_NEWEST = 2;
 const PLAY_PAGE_SIZE = 40;
+/** Play storefront batchexecute RPC id for the reviews list. */
+const PLAY_REVIEWS_RPC_ID = "UsvDTd";
 
 function buildPlayReviewsBody(packageName: string): string {
   const pageSpec: [number, null, null] = [PLAY_PAGE_SIZE, null, null];
@@ -21,7 +23,9 @@ function buildPlayReviewsBody(packageName: string): string {
     [2, PLAY_SORT_NEWEST, pageSpec, null, []],
     [packageName, 7],
   ]);
-  const envelope = JSON.stringify([[["UsvDTd", innerRequest, null, "generic"]]]);
+  const envelope = JSON.stringify([
+    [[PLAY_REVIEWS_RPC_ID, innerRequest, null, "generic"]],
+  ]);
   return `f.req=${encodeURIComponent(envelope)}`;
 }
 
@@ -60,18 +64,19 @@ function extractPlayReviews(
 
   const evidence: EvidenceRef[] = [];
   for (const raw of rawReviews) {
-    const id = asString(pathGet(raw, [0]));
-    const text = asString(pathGet(raw, [4]));
-    if (!id || !text) {
+    // Play batchexecute review tuple: [id, author…, score, ?, text, …]
+    const reviewId = asString(pathGet(raw, [0]));
+    const reviewText = asString(pathGet(raw, [4]));
+    if (!reviewId || !reviewText) {
       continue;
     }
-    const score = asNumber(pathGet(raw, [2]));
+    const starRating = asNumber(pathGet(raw, [2]));
     const scorePrefix =
-      score === undefined ? "Play review" : `Play ${score}★ review`;
+      starRating === undefined ? "Play review" : `Play ${starRating}★ review`;
     evidence.push({
-      id: `play-${id}`,
-      quote: `${scorePrefix}: ${text}`,
-      url: `https://play.google.com/store/apps/details?id=${encodeURIComponent(packageName)}&reviewId=${encodeURIComponent(id)}`,
+      id: `play-${reviewId}`,
+      quote: `${scorePrefix}: ${reviewText}`,
+      url: `https://play.google.com/store/apps/details?id=${encodeURIComponent(packageName)}&reviewId=${encodeURIComponent(reviewId)}`,
       signalSource: "play",
       signalKind: "incumbent-friction",
       structuralKey: packageName,

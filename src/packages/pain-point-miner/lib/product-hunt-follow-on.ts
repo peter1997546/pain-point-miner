@@ -22,7 +22,8 @@ query PostBySlug($slug: String!) {
 }
 `.trim();
 
-export function productHuntSlugFromUrl(url: string): string | undefined {
+/** Only `/posts/:slug` maps to GraphQL `post(slug:)` (not `/products/`). */
+export function productHuntPostSlugFromUrl(url: string): string | undefined {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -33,9 +34,7 @@ export function productHuntSlugFromUrl(url: string): string | undefined {
   if (host !== "producthunt.com") {
     return undefined;
   }
-  const match = parsed.pathname.match(
-    /^\/(?:posts|products)\/([^/]+)\/?$/i,
-  );
+  const match = parsed.pathname.match(/^\/posts\/([^/]+)\/?$/i);
   const slug = match?.[1];
   return slug && slug.length > 0 ? decodeURIComponent(slug) : undefined;
 }
@@ -59,13 +58,13 @@ function evidenceFromPost(post: Record<string, unknown>): EvidenceRef | undefine
     quote: parts.join("\n\n"),
     url,
     signalSource: "product-hunt",
-    signalKind: "incumbent-friction",
+    // Launch pages are not automatically Incumbent Friction (CONTEXT.md).
   };
 }
 
 /**
- * Product Hunt Follow-on — fetches a concrete post/product page by slug.
- * Non-PH URLs return []. GraphQL failures degrade to [].
+ * Product Hunt Follow-on — fetches a concrete `/posts/:slug` page.
+ * Non-post PH URLs (including `/products/`) return []. Failures degrade to [].
  * Not part of Entry Catalog cold-start (ADR-0010).
  */
 export function createProductHuntFollowOnFetcher(
@@ -73,7 +72,7 @@ export function createProductHuntFollowOnFetcher(
 ): FollowOnFetcher {
   return {
     async fetchPage(url: string) {
-      const slug = productHuntSlugFromUrl(url);
+      const slug = productHuntPostSlugFromUrl(url);
       if (!slug) {
         return [];
       }

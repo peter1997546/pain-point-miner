@@ -25,6 +25,22 @@ export type FetchHttpClientInit = {
   fetchImpl?: typeof fetch;
 };
 
+export type AdapterHttpRecordings = {
+  getJson?: ReadonlyMap<string, unknown> | Record<string, unknown>;
+  postJson?: ReadonlyMap<string, unknown> | Record<string, unknown>;
+  postForm?: ReadonlyMap<string, string> | Record<string, string>;
+  getText?: ReadonlyMap<string, string> | Record<string, string>;
+};
+
+function asMap<T>(
+  value: ReadonlyMap<string, T> | Record<string, T> | undefined,
+): Map<string, T> {
+  if (!value) {
+    return new Map();
+  }
+  return value instanceof Map ? new Map(value) : new Map(Object.entries(value));
+}
+
 /** Live (manual) HTTP via global fetch. Not used by default CI fixtures. */
 export function createFetchHttpClient(
   init?: FetchHttpClientInit,
@@ -107,6 +123,46 @@ export function createRecordingHttpClient(
         throw new Error(`No recording for URL: ${url}`);
       }
       return byUrl.get(url);
+    },
+  };
+}
+
+/**
+ * Recording AdapterHttpClient for Store / Follow-on adapters in CI.
+ * Each verb is keyed by exact URL; missing keys throw.
+ */
+export function createRecordingAdapterHttpClient(
+  recordings: AdapterHttpRecordings,
+): AdapterHttpClient {
+  const getJson = asMap(recordings.getJson);
+  const postJson = asMap(recordings.postJson);
+  const postForm = asMap(recordings.postForm);
+  const getText = asMap(recordings.getText);
+
+  return {
+    async getJson(url: string) {
+      if (!getJson.has(url)) {
+        throw new Error(`No getJson recording for URL: ${url}`);
+      }
+      return getJson.get(url);
+    },
+    async postJson(url: string) {
+      if (!postJson.has(url)) {
+        throw new Error(`No postJson recording for URL: ${url}`);
+      }
+      return postJson.get(url);
+    },
+    async postForm(url: string) {
+      if (!postForm.has(url)) {
+        throw new Error(`No postForm recording for URL: ${url}`);
+      }
+      return postForm.get(url)!;
+    },
+    async getText(url: string) {
+      if (!getText.has(url)) {
+        throw new Error(`No getText recording for URL: ${url}`);
+      }
+      return getText.get(url)!;
     },
   };
 }

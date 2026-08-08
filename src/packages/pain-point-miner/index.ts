@@ -23,8 +23,10 @@ export { createEntryCatalogSignalSources } from "./lib/entry-catalog-signal-sour
 export { createHackerNewsSignalSource } from "./lib/hacker-news-signal-source.js";
 export {
   createFetchHttpClient,
+  createRecordingAdapterHttpClient,
   createRecordingHttpClient,
   type AdapterHttpClient,
+  type AdapterHttpRecordings,
   type JsonHttpClient,
 } from "./lib/json-http-client.js";
 export { createRedditSignalSource } from "./lib/reddit-signal-source.js";

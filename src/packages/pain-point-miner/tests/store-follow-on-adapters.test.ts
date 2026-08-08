@@ -321,10 +321,10 @@ describe("Follow-on adapters (Product Hunt + Indie Hackers)", () => {
     expect(evidence[0]!.url).toContain("producthunt.com/posts/invoice-chaser");
   });
 
-  it("Product Hunt Follow-on ignores non-PH URLs", async () => {
+  it("Product Hunt Follow-on ignores non-post PH URLs and non-PH hosts", async () => {
     const http = createScriptedAdapterHttpClient({
       postJson() {
-        throw new Error("should not call GraphQL for non-PH URLs");
+        throw new Error("should not call GraphQL for non-post URLs");
       },
     });
     const followOn = createProductHuntFollowOnFetcher({
@@ -333,6 +333,9 @@ describe("Follow-on adapters (Product Hunt + Indie Hackers)", () => {
     });
     await expect(
       followOn.fetchPage("https://news.ycombinator.com/item?id=1"),
+    ).resolves.toEqual([]);
+    await expect(
+      followOn.fetchPage("https://www.producthunt.com/products/invoice-chaser"),
     ).resolves.toEqual([]);
   });
 
