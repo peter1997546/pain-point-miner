@@ -69,7 +69,7 @@ function evidenceByUrl(
 function formatBriefSection(
   brief: Brief,
   index: number,
-  quotes: Map<string, EvidenceRef>,
+  evidenceByUrlMap: Map<string, EvidenceRef>,
 ): string[] {
   const lines: string[] = [
     `### ${index + 1}. \`${brief.clusterId}\` — ${brief.painPointSummary}`,
@@ -95,7 +95,7 @@ function formatBriefSection(
   }
 
   for (const link of brief.evidenceLinks) {
-    const match = quotes.get(link);
+    const match = evidenceByUrlMap.get(link);
     lines.push(`- ${link}`);
     if (match) {
       lines.push(`  > ${match.quote}`);
@@ -121,7 +121,7 @@ function formatHollowSection(rejection: HollowRejection): string[] {
  */
 export function formatRunReport(input: FormatRunReportInput): string {
   const { briefs, hollowRejections, meta } = input;
-  const quotes = evidenceByUrl(input.evidence);
+  const evidenceByUrlMap = evidenceByUrl(input.evidence);
   const notes = meta.sourceDegradationNotes ?? [];
 
   const lines: string[] = [
@@ -164,7 +164,7 @@ export function formatRunReport(input: FormatRunReportInput): string {
     lines.push("_No Pain Point Briefs._", "");
   } else {
     for (const [index, item] of briefs.entries()) {
-      lines.push(...formatBriefSection(item, index, quotes));
+      lines.push(...formatBriefSection(item, index, evidenceByUrlMap));
     }
   }
 
