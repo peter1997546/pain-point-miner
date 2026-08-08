@@ -9,7 +9,7 @@ The person running this tool to find something worth building. Not the end custo
 _Avoid_: User (ambiguous with end customer), customer (of this tool)
 
 **Miner**:
-The job of this tool: start from an Entry Catalog, crawl Signal Sources, Follow-on Fetch concrete demand-side pages, group Evidence into Candidate Clusters with meaning similarity, apply the Count Gate, Saturation Stop, then Analysis Pass → Pain Points and Briefs.
+The job of this tool: start from an Entry Catalog, crawl Signal Sources, Follow-on Fetch concrete demand-side pages, group Evidence into Candidate Clusters with meaning similarity, apply the Count Gate, Saturation Stop, then Analysis Pass → Pain Points and Briefs, assembled into a Run Report for the Builder.
 _Avoid_: Verifier, restricted search form, brainstormer, competitor-complaint miner (as the primary job)
 
 **Script**:
@@ -17,12 +17,12 @@ The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies t
 _Avoid_: Notebook one-off (unless it is the Script), skill-only crawl
 
 **Skill**:
-Agent-facing orchestration that calls the Script for mining, then fans out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — never the entire crawl corpus in one prompt.
-_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump
+Agent-facing orchestration: interview optional Intent, call the Script for **live** mining, fan out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — then hand outcomes to a Report Agent to assemble the Run Report. Never the entire crawl corpus in one prompt.
+_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode
 
 **Intent**:
-Optional free-text fields the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields are preference notes for the Analysis Pass only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
-_Avoid_: Intake form, requirements form, restriction sheet
+Optional free-text preference notes the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
+_Avoid_: Intake form, requirements form, restriction sheet, treating Intent as crawl config
 
 **Theme**:
 An optional broad directional preference (e.g. “AI automation”, “提升效率”). Not a use case, workflow, or Target Market.
@@ -73,8 +73,8 @@ Analysis Pass judgment that complaints are not a real Pain Point: wish-only with
 _Avoid_: Low quality (vague), spam (different problem)
 
 **Analysis Pass**:
-AI steps run **per Candidate Cluster** (one problem at a time; multi-agent allowed): Hollow vs real, Signal Mix, then Brief enrichment (Competitive Landscape, Delivery Cost, status-quo spend, difficulty, etc.). Does not invent Evidence and must not receive the full scrape as one blob.
-_Avoid_: Brainstorm pass, ideation, “Software Fit” (retired), batch-dump analysis
+AI steps run **per Candidate Cluster** in the Cursor agent / Skill (one problem at a time; multi-agent allowed): Hollow vs real, Signal Mix, then Brief enrichment (Competitive Landscape, Delivery Cost, status-quo spend, difficulty, etc.). Does not invent Evidence and must not receive the full scrape as one blob. Not a product-required live LLM API.
+_Avoid_: Brainstorm pass, ideation, “Software Fit” (retired), batch-dump analysis, treating a hosted LLM adapter as the product Analysis path
 
 **Competitive Landscape**:
 Annotation from the Analysis Pass about existing offerings and how strongly they already serve the relevant Target Market (including local penetration).
@@ -120,3 +120,7 @@ _Avoid_: Seed app list as the primary store strategy
 **Brief**:
 Enriched Analysis Pass output: Pain Point + Evidence, inferred Target Market, Competitive Landscape, status-quo spend signals, Delivery Cost, difficulty S/M/L. MVP sketch optional in v1.
 _Avoid_: Opportunity report, idea list, ChatGPT-style market blurb
+
+**Run Report**:
+The Builder-facing polished Markdown artifact assembled after per-cluster Analysis Pass outcomes return — Briefs plus Hollow rejections, readable rather than a raw `RunArtifact` dump. Written under a time-based run folder. Produced by a Report Agent (or equivalent Skill step) that integrates sub-agent results; it does not re-judge Hollow vs Brief and does not invent Evidence.
+_Avoid_: Opportunity report, raw RunArtifact dump as the Builder deliverable, ChatGPT-style market blurb
