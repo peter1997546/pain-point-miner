@@ -23,12 +23,14 @@ Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009
 
 ### 1. Mine via Script
 
-From the repo root (fixtures; no live network in v1 Script defaults):
+From the repo root (fixtures; no live network in v1 Script defaults). Prefer the **Skill handoff** so chat never loads the full scrape `evidence[]`:
 
 ```bash
 npm install
-npm run cli -- --format json --out .pain-point-miner/mining.json
+npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json
 ```
+
+That file carries only `intent`, `gatedClusters`, and `saturationStopped` (`toSkillMiningHandoff`). Use a full `--format json` artifact only for local inspection outside Analysis Pass.
 
 Or programmatically — Script mining **without** an `analysisPass` port, then Skill fan-out:
 
@@ -58,11 +60,11 @@ const skill = createSkillOrchestrator({
 const artifact = await skill.run({});
 ```
 
-**Done when:** a mining `RunArtifact` exists with `gatedClusters` (Count Gate survivors). Ungated clusters stay on `candidateClusters` only — they do not enter Analysis Pass.
+**Done when:** a Skill handoff (or mining artifact) exists with `gatedClusters` (Count Gate survivors). Ungated clusters never enter Analysis Pass.
 
 ### 2. Fan out Analysis Pass (one cluster each)
 
-For every entry in `gatedClusters`, run Analysis Pass **separately** (parallel subagents OK):
+For every entry in `gatedClusters` from the handoff, run Analysis Pass **separately** (parallel subagents OK):
 
 - **Input:** that cluster only (`cluster.id`, `cluster.evidence`, `cluster.signalMix`, `cluster.evidenceCount`) plus optional Intent (`theme`, …).
 - **Judgment:** Hollow → reject with reason; else emit a Pain Point **Brief**.

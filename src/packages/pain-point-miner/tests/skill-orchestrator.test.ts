@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createPainPointMiner,
   createSkillOrchestrator,
+  toSkillMiningHandoff,
   type AnalysisOutcome,
   type AnalysisPass,
   type AnalysisPassInput,
@@ -265,6 +266,37 @@ describe("Skill orchestrator — Script mining + per-cluster Analysis fan-out", 
       expect(call.cluster.evidence).toHaveLength(5);
       expect(call.cluster.evidence.length).toBeLessThan(artifact.evidence.length);
     }
+  });
+
+  it("projects mining RunArtifact to a condensed Skill handoff (no full scrape)", async () => {
+    const alpha = clusterOfFive("alpha", [
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+    ]);
+    const quoteMap: Record<string, readonly number[]> = {};
+    for (const item of alpha) {
+      quoteMap[item.quote] = PAIN_VEC;
+    }
+
+    const scriptMiner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", alpha)],
+      embeddings: embeddingsByQuote(quoteMap),
+    });
+    const mining = await scriptMiner.run({});
+    const handoff = toSkillMiningHandoff(mining);
+
+    expect(Object.keys(handoff).sort()).toEqual([
+      "gatedClusters",
+      "intent",
+      "saturationStopped",
+    ]);
+    expect(handoff.gatedClusters).toHaveLength(1);
+    expect(handoff.gatedClusters[0]!.evidence).toHaveLength(5);
+    expect(handoff).not.toHaveProperty("evidence");
+    expect(handoff).not.toHaveProperty("candidateClusters");
   });
 
   it("fans out Analysis Pass in parallel across gated clusters", async () => {

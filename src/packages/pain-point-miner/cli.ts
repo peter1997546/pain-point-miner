@@ -7,6 +7,7 @@ import {
   createFixtureSignalSources,
   createPainPointMiner,
   formatRunArtifact,
+  toSkillMiningHandoff,
   type ArtifactFormat,
   type Embeddings,
   type FollowOnFetcher,
@@ -35,9 +36,11 @@ function parseFormat(value: string | undefined): ArtifactFormat {
 function parseArgs(argv: string[]): {
   format: ArtifactFormat;
   outPath: string | undefined;
+  skillHandoff: boolean;
 } {
   let format: ArtifactFormat = "markdown";
   let outPath: string | undefined;
+  let skillHandoff = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -54,22 +57,33 @@ function parseArgs(argv: string[]): {
       i += 1;
       continue;
     }
+    if (arg === "--handoff") {
+      const value = argv[i + 1];
+      if (value !== "skill") {
+        throw new Error(`Unsupported --handoff: ${value} (use skill)`);
+      }
+      skillHandoff = true;
+      i += 1;
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       throw new Error("HELP");
     }
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  return { format, outPath };
+  return { format, outPath, skillHandoff };
 }
 
-const HELP = `Usage: pain-point-miner [--format json|markdown] [--out path]
+const HELP = `Usage: pain-point-miner [--format json|markdown] [--handoff skill] [--out path]
 
 Runs PainPointMiner.run with empty Intent defaults against injectable
 fixture Signal Sources (no live network) and emits a RunArtifact.
 
 Options:
   --format   Output format (default: markdown)
+  --handoff  skill — emit condensed gated clusters for Skill Analysis Pass
+             (JSON only; omits full scrape evidence[])
   --out      Write to a file instead of stdout
   -h, --help Show this help
 `;
@@ -81,7 +95,11 @@ export async function runCli(
   const stdout = io.stdout ?? process.stdout;
 
   try {
-    const { format, outPath } = parseArgs(argv);
+    const { format, outPath, skillHandoff } = parseArgs(argv);
+    if (skillHandoff && format !== "json") {
+      throw new Error("--handoff skill requires --format json");
+    }
+
     const miner = createPainPointMiner({
       signalSources: io.signalSources ?? createFixtureSignalSources(),
       embeddings: io.embeddings ?? createFixtureEmbeddings(),
@@ -91,7 +109,9 @@ export async function runCli(
         io.storeReviewSource ?? createDefaultFixtureStoreReviewSource(),
     });
     const artifact = await miner.run({});
-    const rendered = formatRunArtifact(artifact, format);
+    const rendered = skillHandoff
+      ? `${JSON.stringify(toSkillMiningHandoff(artifact), null, 2)}\n`
+      : formatRunArtifact(artifact, format);
 
     if (outPath) {
       await writeFile(outPath, rendered, "utf8");

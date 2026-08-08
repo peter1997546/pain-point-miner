@@ -48,6 +48,8 @@ The Script mines and gates only (no Analysis Pass). Use it for condensed gated c
 npm install
 npm run cli -- --format markdown
 npm run cli -- --format json --out artifact.json
+# Condensed Skill handoff (gatedClusters only — no full scrape evidence[])
+npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json
 ```
 
 ## Skill (Script + per-cluster fan-out)

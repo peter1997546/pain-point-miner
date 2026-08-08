@@ -1,12 +1,11 @@
 import { applyCompetitionFilter } from "./competition-filter.js";
 import { clusterEvidence } from "./cluster-evidence.js";
+import { partitionAnalysisOutcomes } from "./partition-analysis-outcomes.js";
 import type {
   AnalysisOutcome,
-  Brief,
   CandidateCluster,
   EvidenceRef,
   FollowOnTarget,
-  HollowRejection,
   Intent,
   MentionedApp,
   PainPointMiner,
@@ -216,26 +215,21 @@ export function createPainPointMiner(
 
       const gatedClusters = gatedClustersOf(state.candidateClusters);
       const analysisOutcomes: AnalysisOutcome[] = [];
-      const briefs: Brief[] = [];
-      const hollowRejections: HollowRejection[] = [];
 
       // Per-cluster Analysis Pass (ADR-0011) — one gated cluster per call.
       if (deps.analysisPass) {
         for (const cluster of gatedClusters) {
-          const outcome = await deps.analysisPass.analyze({
-            cluster,
-            intent,
-          });
-          analysisOutcomes.push(outcome);
-          if (outcome.status === "hollow") {
-            const { status: _status, ...rejection } = outcome;
-            hollowRejections.push(rejection);
-          } else {
-            briefs.push(outcome.brief);
-          }
+          analysisOutcomes.push(
+            await deps.analysisPass.analyze({
+              cluster,
+              intent,
+            }),
+          );
         }
       }
 
+      const { briefs, hollowRejections } =
+        partitionAnalysisOutcomes(analysisOutcomes);
       const { visible, hidden } = applyCompetitionFilter(
         briefs,
         input.competitionFilterThreshold,

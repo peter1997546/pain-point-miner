@@ -19,10 +19,13 @@ export {
 } from "./lib/format-run-artifact.js";
 export {
   createSkillOrchestrator,
-  createSkillOrchestratorFromMiner,
   type SkillOrchestrator,
   type SkillOrchestratorDeps,
 } from "./lib/skill-orchestrator.js";
+export {
+  toSkillMiningHandoff,
+  type SkillMiningHandoff,
+} from "./lib/skill-mining-handoff.js";
 export type {
   AnalysisOutcome,
   AnalysisPass,

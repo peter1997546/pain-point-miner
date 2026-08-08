@@ -1,10 +1,8 @@
 import { applyCompetitionFilter } from "./competition-filter.js";
+import { partitionAnalysisOutcomes } from "./partition-analysis-outcomes.js";
 import type {
   AnalysisOutcome,
   AnalysisPass,
-  Brief,
-  HollowRejection,
-  PainPointMiner,
   RunArtifact,
   RunInput,
 } from "./types.js";
@@ -20,6 +18,7 @@ export type SkillOrchestratorDeps = {
   /**
    * Script mining entry. Must return condensed gated Candidate Clusters;
    * must not be a chat-side re-implementation of the crawl.
+   * Prefer a miner built without `analysisPass` so Analysis is not run twice.
    */
   runMining: (input?: RunInput) => Promise<RunArtifact>;
   /** Per-cluster Analysis Pass (test double or live LLM). */
@@ -58,17 +57,8 @@ export function createSkillOrchestrator(
         ),
       );
 
-      const briefs: Brief[] = [];
-      const hollowRejections: HollowRejection[] = [];
-      for (const outcome of analysisOutcomes) {
-        if (outcome.status === "hollow") {
-          const { status: _status, ...rejection } = outcome;
-          hollowRejections.push(rejection);
-        } else {
-          briefs.push(outcome.brief);
-        }
-      }
-
+      const { briefs, hollowRejections } =
+        partitionAnalysisOutcomes(analysisOutcomes);
       const { visible, hidden } = applyCompetitionFilter(
         briefs,
         input.competitionFilterThreshold,
@@ -88,18 +78,4 @@ export function createSkillOrchestrator(
       };
     },
   };
-}
-
-/**
- * Wire a Skill orchestrator to an existing Script miner (no Analysis Pass on
- * the miner itself — fan-out stays at the Skill layer).
- */
-export function createSkillOrchestratorFromMiner(
-  miner: PainPointMiner,
-  analysisPass: AnalysisPass,
-): SkillOrchestrator {
-  return createSkillOrchestrator({
-    runMining: (input) => miner.run(input),
-    analysisPass,
-  });
 }
