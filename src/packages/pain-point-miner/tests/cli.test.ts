@@ -215,12 +215,15 @@ describe("Script CLI", () => {
       intent: unknown;
       gatedClusters: unknown[];
       saturationStopped: boolean;
+      sourceDegradationNotes: unknown;
       evidence?: unknown;
       candidateClusters?: unknown;
     };
     expect(written.intent).toEqual({});
     expect(Array.isArray(written.gatedClusters)).toBe(true);
     expect(typeof written.saturationStopped).toBe("boolean");
+    // Fixture (non-live) handoff: no live deepenings skipped.
+    expect(written.sourceDegradationNotes).toEqual([]);
     expect(written).not.toHaveProperty("evidence");
     expect(written).not.toHaveProperty("candidateClusters");
   });

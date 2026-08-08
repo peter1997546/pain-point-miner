@@ -21,7 +21,7 @@ Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009
 3. **Per-cluster Analysis Pass only**, in **Cursor agents** (ADR-0013) — not a product LLM HTTP adapter. Each subagent receives **one** gated Candidate Cluster’s Evidence plus Intent / Brief fields for that cluster.
 4. **Never** paste the full scrape corpus, all Candidate Clusters, or the entire `evidence[]` array into a single Analysis Pass prompt.
 5. **Embeddings are free/local** (ADR-0012) — do not require a paid embedding API for the product path. Prefer models baked into the Cloud environment snapshot.
-6. **Deliver a Run Report** (polished Markdown in a time-based run folder), not a raw `RunArtifact` dump as the Builder-facing output (ADR-0015).
+6. **Deliver a Run Report** (polished Markdown in a time-based run folder via `formatRunReport` / `writeSkillRunFolder`), not a raw `RunArtifact` dump as the Builder-facing output (ADR-0015).
 
 ## Process
 
@@ -39,7 +39,7 @@ Before mining, grill the Builder on **functional Intent** only — explain each 
 
 Do **not** interrogate Count Gate / Saturation Stop / Competition Filter / CLI plumbing unless the Builder volunteers overrides. Filled Intent must not whitelist or invent crawl targets (ADR-0004).
 
-Create a time-based run folder for this run (e.g. `.pain-point-miner/runs/<timestamp>/`) and keep handoff + Run Report under it.
+Create a time-based run folder for this run with `createSkillRunFolderPath()` (e.g. `.pain-point-miner/runs/<timestamp>/`) and keep handoff + Run Report under it.
 
 ### 1. Mine via Script (live)
 
@@ -49,15 +49,16 @@ From the repo root. Prefer the **Skill handoff** so chat never loads the full sc
 npm install
 # Real usage: live Entry Catalog (+ Follow-on/Store). Embeddings must be free/local (ADR-0012).
 # Omit token-gated deepenings (e.g. PRODUCT_HUNT_TOKEN) when unset — do not block the run.
+# Handoff includes sourceDegradationNotes for the Run Report when deepenings skip.
 npm run cli -- --live --format json --handoff skill \
   --out .pain-point-miner/runs/<timestamp>/handoff.json \
   [--theme "..."] [--product-shape "..."] [--constraints "..."] \
   [--hard-nos "..."] [--success-definition "..."]
 ```
 
-Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gatedClusters`, and `saturationStopped` only (`toSkillMiningHandoff`).
+Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gatedClusters`, `saturationStopped`, and `sourceDegradationNotes` (`toSkillMiningHandoff` + `liveSourceDegradationNotes`).
 
-**Priority for live sources:** token-free paths first (Reddit, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; note skips in the Run Report later.
+**Priority for live sources:** token-free paths first (Reddit, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; notes land on the handoff for the Run Report.
 
 **Embeddings:** `--live` defaults to free/local `createLocalEmbeddings` (ADR-0012; model `Xenova/bge-small-en-v1.5`, cache `PPM_EMBEDDINGS_CACHE_DIR` / `.pain-point-miner/models`). Do **not** treat `OPENAI_API_KEY` / paid embedding APIs as the product requirement. Prefer snapshot-baked weights via `npm run bake:local-embeddings` (Cloud `.cursor/environment.json` install; ticket #37). OpenAI-compatible is experimental only (`PPM_EMBEDDINGS_BACKEND=openai-compatible`).
 
@@ -80,18 +81,35 @@ See [ANALYSIS.md](ANALYSIS.md) for the per-cluster checklist.
 
 A **Report Agent** (or equivalent Skill step) integrates all Analysis outcomes:
 
-1. Optionally merge into `RunArtifact` shape (`briefs`, `hollowRejections`, `analysisOutcomes`) for machine use.
-2. Write the **Run Report**: polished, readable Markdown (headings, Evidence quotes/links, tables as needed) under the time-based run folder — e.g. `.pain-point-miner/runs/<timestamp>/report.md`.
-3. Do **not** re-judge Hollow vs Brief or invent Evidence.
-4. Note live-source degradations / skipped token-gated deepenings when relevant.
-5. Chat: short pointer to the Run Report path + brief highlights — not a raw JSON dump.
+1. Collect structured outcomes (`hollow` | `brief`) from every analysis subagent — do **not** re-judge Hollow vs Brief or invent Evidence.
+2. Write the run folder with the library seam (starts from the formatter — do not improvise report structure):
+
+```ts
+import {
+  writeSkillRunFolder,
+  type AnalysisOutcome,
+  type SkillMiningHandoff,
+} from "pain-point-miner";
+// or relative: src/packages/pain-point-miner/index.ts
+
+await writeSkillRunFolder({
+  runDir: ".pain-point-miner/runs/<timestamp>",
+  handoff, // loaded SkillMiningHandoff (includes sourceDegradationNotes)
+  analysisOutcomes, // AnalysisOutcome[] from step 2
+});
+// → handoff.json + report.md under runDir
+```
+
+   Equivalent pure step without I/O: `assembleRunReport({ handoff, analysisOutcomes, runId })` → Markdown (uses `formatRunReport`).
+3. Chat: short pointer to the Run Report path (`report.md`) + brief highlights — not a raw JSON dump.
 
 **Done when:** the Builder can open the Run Report and act on Briefs without reading a full-corpus dump.
 
 ## Smoke path (fixtures + tests only)
 
 ```bash
+npm test -- src/packages/pain-point-miner/tests/skill-product-path.test.ts
 npm test -- src/packages/pain-point-miner/tests/skill-orchestrator.test.ts
 ```
 
-Fixtures and test-double `AnalysisPass` ports are for CI/offline tests (ADR-0014 / ADR-0013). They are not the Cloud Agent product path.
+Fixtures and test-double `AnalysisPass` ports are for CI/offline tests (ADR-0014 / ADR-0013). They are not the Cloud Agent product path. `createLlmAnalysisPass` is experimental only — not the product Analysis surface.

@@ -75,7 +75,23 @@ export {
 export {
   toSkillMiningHandoff,
   type SkillMiningHandoff,
+  type ToSkillMiningHandoffOptions,
 } from "./lib/skill-mining-handoff.js";
+export {
+  liveSourceDegradationNotes,
+  PRODUCT_HUNT_FOLLOW_ON_SKIPPED_NOTE,
+  type LiveSourceDegradationNotesInput,
+} from "./lib/live-source-degradation-notes.js";
+export {
+  assembleRunReport,
+  createSkillRunFolderPath,
+  writeSkillRunFolder,
+  DEFAULT_SKILL_RUNS_ROOT,
+  type AssembleRunReportInput,
+  type CreateSkillRunFolderPathOptions,
+  type WriteSkillRunFolderInput,
+  type WriteSkillRunFolderResult,
+} from "./lib/skill-run-folder.js";
 export {
   ANALYSIS_PASS_SYSTEM_PROMPT,
   createLlmAnalysisPass,

@@ -292,9 +292,11 @@ describe("Skill orchestrator — Script mining + per-cluster Analysis fan-out", 
       "gatedClusters",
       "intent",
       "saturationStopped",
+      "sourceDegradationNotes",
     ]);
     expect(handoff.gatedClusters).toHaveLength(1);
     expect(handoff.gatedClusters[0]!.evidence).toHaveLength(5);
+    expect(handoff.sourceDegradationNotes).toEqual([]);
     expect(handoff).not.toHaveProperty("evidence");
     expect(handoff).not.toHaveProperty("candidateClusters");
   });

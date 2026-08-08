@@ -21,7 +21,10 @@ export type SkillOrchestratorDeps = {
    * Prefer a miner built without `analysisPass` so Analysis is not run twice.
    */
   runMining: (input?: RunInput) => Promise<RunArtifact>;
-  /** Per-cluster Analysis Pass (test double or live LLM). */
+  /**
+   * Per-cluster Analysis Pass. Product path uses Cursor agents (ADR-0013);
+   * inject a test double here for CI. `createLlmAnalysisPass` is experimental only.
+   */
   analysisPass: AnalysisPass;
 };
 

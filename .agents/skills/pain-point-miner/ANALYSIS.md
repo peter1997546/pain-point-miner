@@ -40,3 +40,5 @@ Otherwise emit a **Brief**.
 ```
 
 Do not invent Evidence. Quote and link only what the cluster already carries.
+
+Return the outcome to the parent / Report Agent. The Report Agent writes `report.md` via `writeSkillRunFolder` / `assembleRunReport` (formatter) — analysis subagents do not author the final Run Report.
