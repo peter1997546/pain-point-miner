@@ -1,5 +1,6 @@
 import { clusterEvidence } from "./cluster-evidence.js";
 import type {
+  CandidateCluster,
   EvidenceRef,
   Intent,
   PainPointMiner,
@@ -11,6 +12,7 @@ import {
   DEFAULT_COUNT_GATE_THRESHOLD,
   DEFAULT_MEANING_SIMILARITY_THRESHOLD,
   DEFAULT_SATURATION_STOP_K,
+  DEFAULT_STRUCTURAL_KEY_SIMILARITY_THRESHOLD,
 } from "./types.js";
 
 const EMPTY_INTENT: Intent = {};
@@ -19,7 +21,7 @@ async function buildClusters(
   evidence: readonly EvidenceRef[],
   deps: PainPointMinerDeps,
   countGateThreshold: number,
-) {
+): Promise<CandidateCluster[]> {
   const embeddings =
     evidence.length === 0
       ? []
@@ -28,8 +30,17 @@ async function buildClusters(
     embeddings,
     meaningSimilarityThreshold:
       deps.meaningSimilarityThreshold ?? DEFAULT_MEANING_SIMILARITY_THRESHOLD,
+    structuralKeySimilarityThreshold:
+      deps.structuralKeySimilarityThreshold ??
+      DEFAULT_STRUCTURAL_KEY_SIMILARITY_THRESHOLD,
     countGateThreshold,
   });
+}
+
+function gatedClustersOf(
+  clusters: readonly CandidateCluster[],
+): CandidateCluster[] {
+  return clusters.filter((cluster) => cluster.passedCountGate);
 }
 
 export function createPainPointMiner(
@@ -44,6 +55,7 @@ export function createPainPointMiner(
         input.saturationStopK ?? DEFAULT_SATURATION_STOP_K;
 
       const evidence: EvidenceRef[] = [];
+      let candidateClusters: CandidateCluster[] = [];
       let saturationStopped = false;
 
       for (const source of deps.signalSources) {
@@ -51,30 +63,22 @@ export function createPainPointMiner(
         const batch = await source.collect();
         evidence.push(...batch);
 
-        const clusters = await buildClusters(
+        candidateClusters = await buildClusters(
           evidence,
           deps,
           countGateThreshold,
         );
-        const gatedCount = clusters.filter((c) => c.passedCountGate).length;
-        if (gatedCount >= saturationStopK) {
+        if (gatedClustersOf(candidateClusters).length >= saturationStopK) {
           saturationStopped = true;
           break;
         }
       }
 
-      const candidateClusters = await buildClusters(
-        evidence,
-        deps,
-        countGateThreshold,
-      );
-      const gatedClusters = candidateClusters.filter((c) => c.passedCountGate);
-
       return {
         intent,
         evidence,
         candidateClusters,
-        gatedClusters,
+        gatedClusters: gatedClustersOf(candidateClusters),
         saturationStopped,
       };
     },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createPainPointMiner,
+  formatRunArtifact,
   type Embeddings,
   type EvidenceRef,
   type SignalSource,
@@ -90,6 +91,57 @@ describe("PainPointMiner.run — Candidate Clusters, Count Gate, Saturation Stop
     expect(artifact.candidateClusters).toHaveLength(2);
   });
 
+  it("does not merge same structuralKey when meaning vectors are orthogonal", async () => {
+    const a = evidence({
+      id: "a",
+      quote: "invoice chase automation",
+      structuralKey: "shared-key",
+    });
+    const b = evidence({
+      id: "b",
+      quote: "warehouse bin labeling",
+      structuralKey: "shared-key",
+    });
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [a, b])],
+      embeddings: embeddingsByQuote({
+        [a.quote]: INVOICE_VEC,
+        [b.quote]: INVENTORY_VEC,
+      }),
+    });
+
+    const artifact = await miner.run({});
+    expect(artifact.candidateClusters).toHaveLength(2);
+  });
+
+  it("lets a shared structuralKey assist a below-meaning-threshold merge", async () => {
+    const a = evidence({
+      id: "a",
+      quote: "late payment follow-ups",
+      structuralKey: "payments",
+    });
+    const b = evidence({
+      id: "b",
+      quote: "dunning emails for freelancers",
+      structuralKey: "payments",
+    });
+    // Cosine of [1,0] and normalize([1,1]) = ~0.707 — below 0.8 meaning, above 0.5 structural assist.
+    const mid = [1, 1, 0] as const;
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [a, b])],
+      embeddings: embeddingsByQuote({
+        [a.quote]: INVOICE_VEC,
+        [b.quote]: mid,
+      }),
+    });
+
+    const artifact = await miner.run({});
+    expect(artifact.candidateClusters).toHaveLength(1);
+    expect(artifact.candidateClusters[0]!.evidenceCount).toBe(2);
+  });
+
   it("clusters same pain across different structural keys when meaning vectors align", async () => {
     const a = evidence({
       id: "a",
@@ -173,6 +225,10 @@ describe("PainPointMiner.run — Candidate Clusters, Count Gate, Saturation Stop
         c.evidence.some((e) => e.structuralKey === "scheduling"),
       ),
     ).toBeUndefined();
+
+    const markdown = formatRunArtifact(artifact, "markdown");
+    expect(markdown).toContain("passed Count Gate");
+    expect(markdown).toContain("below Count Gate (not analysis-ready)");
   });
 
   it("Saturation Stop halts mining once 20 Count-Gated clusters exist", async () => {

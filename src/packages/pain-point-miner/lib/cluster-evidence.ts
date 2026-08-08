@@ -30,6 +30,7 @@ class UnionFind {
 export type ClusterEvidenceOptions = {
   embeddings: readonly (readonly number[])[];
   meaningSimilarityThreshold: number;
+  structuralKeySimilarityThreshold: number;
   countGateThreshold: number;
 };
 
@@ -56,13 +57,19 @@ export function clusterEvidence(
     for (let j = i + 1; j < evidence.length; j += 1) {
       const left = evidence[i]!;
       const right = evidence[j]!;
+      const similarity = cosineSimilarity(
+        options.embeddings[i]!,
+        options.embeddings[j]!,
+      );
       const sameStructuralKey =
         left.structuralKey !== undefined &&
         left.structuralKey === right.structuralKey;
       const similarMeaning =
-        cosineSimilarity(options.embeddings[i]!, options.embeddings[j]!) >=
-        options.meaningSimilarityThreshold;
-      if (sameStructuralKey || similarMeaning) {
+        similarity >= options.meaningSimilarityThreshold;
+      const structuralAssist =
+        sameStructuralKey &&
+        similarity >= options.structuralKeySimilarityThreshold;
+      if (similarMeaning || structuralAssist) {
         uf.union(i, j);
       }
     }

@@ -26,7 +26,12 @@ export type EvidenceRef = {
   quote: string;
   url: string;
   signalSource: string;
-  /** Optional structural clustering key (board / app / topic), when known. */
+  /**
+   * Optional structural clustering key when the crawler knows a shared
+   * complaint identity (e.g. mentioned app id, normalized topic id).
+   * Same key assists merges together with meaning similarity — it is not a
+   * board/source bucket that merges unrelated Evidence alone.
+   */
   structuralKey?: string;
 };
 
@@ -74,6 +79,11 @@ export type PainPointMinerDeps = {
   embeddings: Embeddings;
   /** Cosine threshold for meaning merges; default 0.8. */
   meaningSimilarityThreshold?: number;
+  /**
+   * Cosine floor for merges assisted by a shared structuralKey; default 0.5.
+   * Structural keys never merge orthogonal meanings by themselves.
+   */
+  structuralKeySimilarityThreshold?: number;
 };
 
 export type PainPointMiner = {
@@ -83,3 +93,4 @@ export type PainPointMiner = {
 export const DEFAULT_COUNT_GATE_THRESHOLD = 5;
 export const DEFAULT_SATURATION_STOP_K = 20;
 export const DEFAULT_MEANING_SIMILARITY_THRESHOLD = 0.8;
+export const DEFAULT_STRUCTURAL_KEY_SIMILARITY_THRESHOLD = 0.5;
