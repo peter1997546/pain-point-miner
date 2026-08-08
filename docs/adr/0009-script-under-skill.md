@@ -1,3 +1,3 @@
-# Script is required; Skill only wraps it
+# Script + Skill hybrid because crawl volume blows up agent context
 
-The crawl → count → analysis pipeline lives in a Script. A Skill may invoke that Script for convenience, but there is no skill-only product without the Script underneath.
+A pure Skill that pulls Reddit / HN / stores / follow-ons into the agent context will overwhelm the model with raw Evidence. v1 keeps a Script for crawl → cluster → Count Gate / Saturation Stop, and a Skill that orchestrates the Script then runs Analysis Pass only on the condensed candidates.

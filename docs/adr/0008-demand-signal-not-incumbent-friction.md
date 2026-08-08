@@ -1,3 +1,3 @@
-# Demand Signal first, Incumbent Friction second
+# Demand Signal vs Incumbent Friction, both countable with Signal Mix
 
-Cold-start and Follow-on Fetch optimize for Demand Signals (missing tool, manual workaround, “why is there no…”). Incumbent Friction (“alternative to X”, product reviews, named-tool rants) is a different dimension — useful for Competitive Landscape and Store Second Pass, not the definition of having found a Pain Point.
+Cold-start and Follow-on Fetch still prefer Demand Signals (missing tool, manual workaround, “why is there no…”). Incumbent Friction (“alternative to X”, named-product reviews/rants) may count toward Evidence Count, but every Candidate Cluster / Brief must carry a Signal Mix label so “find demand” and “attack an incumbent” stay distinguishable dimensions.

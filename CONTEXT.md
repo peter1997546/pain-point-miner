@@ -1,6 +1,6 @@
 # Pain Point Miner
 
-Helps an indie builder discover real Pain Points by mining public signals and analyzing them — a Miner that *finds* unmet demand, not a form that *restricts* search, and not a competitor-complaint scraper whose job is only to improve on a named product. v1 is a **script** at the core, with an optional **skill** wrapper that calls that script.
+Helps an indie builder discover real Pain Points by mining public signals and analyzing them — a Miner that *finds* unmet demand, not a form that *restricts* search, and not a competitor-complaint scraper whose job is only to improve on a named product. v1 is a **Script + Skill** hybrid: the Script holds crawl/cluster/count outside the model context; the Skill orchestrates and runs the Analysis Pass on condensed candidates.
 
 ## Language
 
@@ -13,12 +13,12 @@ The job of this tool: start from an Entry Catalog, crawl Signal Sources, Follow-
 _Avoid_: Verifier, restricted search form, brainstormer, competitor-complaint miner (as the primary job)
 
 **Script**:
-The runnable core that performs crawl → count → analysis. Required. There is no skill-only path without a Script underneath.
-_Avoid_: Notebook one-off (unless it is the Script)
+The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies the Count Gate / Saturation Stop — so raw Evidence never has to be stuffed into an agent context window. Required in v1 because a pure Skill path would drown the agent in volume.
+_Avoid_: Notebook one-off (unless it is the Script), skill-only crawl
 
 **Skill**:
-An agent-facing wrapper that invokes the Script. Optional convenience; cannot replace the Script.
-_Avoid_: Skill-only product
+Agent-facing orchestration that calls the Script for mining, then runs (or triggers) the Analysis Pass on the condensed Candidate Clusters / Pain Points the Script emits — not on the raw scrape corpus.
+_Avoid_: Skill-only product, pasting full crawl into chat
 
 **Intent**:
 Optional free-text fields the Builder *may* fill. Empty Intent is valid. Filled fields do not invent crawl targets; deepening is via Follow-on Fetch of concrete pages already found. May inform the Analysis Pass.
@@ -60,8 +60,12 @@ _Avoid_: Quality filter, vibe check
 Stop crawling when at least **20** Candidate Clusters have passed the Count Gate.
 _Avoid_: User-imposed result cap
 
+**Signal Mix**:
+Label on a Candidate Cluster / Brief: how much of its Evidence is Demand Signal vs Incumbent Friction. Both may count toward Evidence Count, but the mix must be visible so the Builder knows whether the cluster is “missing need” vs “named-product gripe.”
+_Avoid_: Hiding alternative/review evidence inside an unlabeled Pain Point
+
 **Pain Point**:
-A Candidate Cluster that (1) passes the Count Gate and (2) survives the Analysis Pass judgment that it is not Hollow — ideally rooted in Demand Signals, not only Incumbent Friction.
+A Candidate Cluster that (1) passes the Count Gate and (2) survives the Analysis Pass judgment that it is not Hollow. Carries a Signal Mix label.
 _Avoid_: Problem (as the formal name), idea, brainstorm topic
 
 **Hollow**:
@@ -92,9 +96,14 @@ _Avoid_: Profit estimate, TAM, ARR projection
 Reddit, Apple App Store reviews, Google Play reviews, Hacker News, Product Hunt, Indie Hackers.
 _Avoid_: G2/Capterra (v1), GitHub issues (v1), Chrome Web Store (v1)
 
-**Entry Catalog**:
-The fixed cold-start list of places and query patterns used before any Follow-on Fetch — where Demand Signals commonly show up (customer/workflow communities and “missing tool / manual workaround” searches, not founder-meta echo chambers as the main diet). Maintained with the tool; the Builder is not asked to invent it each run.
-_Avoid_: Hot-only firehose, competitor-subreddit sweep as the primary entry
+**Entry Catalog** (v1):
+Cold-start before Follow-on Fetch:
+- Reddit boards (primary): `r/smallbusiness`, `r/freelance`, `r/sysadmin`, `r/webdev`, `r/sales`, `r/marketing`, `r/ecommerce`
+- Reddit query patterns (Demand-oriented): wish / tool for / why no / spreadsheet workaround / how do you handle
+- HN: Ask HN–style frustration / wish searches
+- Product Hunt & Indie Hackers: not primary cold-start; Follow-on when referenced
+- Large founder boards (e.g. Entrepreneur): deprioritized in the first wave
+_Avoid_: Hot-only firehose, competitor-subreddit sweep as the primary entry, PH/IH as main demand entry
 
 **Signal Source**:
 One channel from the Source Catalog mined for Evidence.
