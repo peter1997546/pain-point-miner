@@ -182,6 +182,7 @@ export function createPainPointMiner(
       }
 
       // Re-plan after each deepen so pages discovered mid-run are pursued.
+      // One failing Follow-on page must not void the run (spec #29).
       if (deps.followOnFetcher) {
         const fetchedUrls = new Set<string>();
         while (!state.saturationStopped) {
@@ -192,7 +193,12 @@ export function createPainPointMiner(
             break;
           }
           fetchedUrls.add(next.url);
-          const batch = await deps.followOnFetcher.fetchPage(next.url);
+          let batch: readonly EvidenceRef[] = [];
+          try {
+            batch = await deps.followOnFetcher.fetchPage(next.url);
+          } catch {
+            // Degrade to an empty batch; other deepenings still contribute.
+          }
           await ingestBatch(
             state,
             batch,
@@ -203,10 +209,16 @@ export function createPainPointMiner(
         }
       }
 
+      // One failing Store Second Pass lookup must not void the run (spec #29).
       if (deps.storeReviewSource && !state.saturationStopped) {
         const apps = planMentionedApps(state.evidence);
         for (const app of apps) {
-          const batch = await deps.storeReviewSource.fetchReviews(app);
+          let batch: readonly EvidenceRef[] = [];
+          try {
+            batch = await deps.storeReviewSource.fetchReviews(app);
+          } catch {
+            // Degrade to an empty batch; other mentioned apps still contribute.
+          }
           await ingestBatch(
             state,
             batch,

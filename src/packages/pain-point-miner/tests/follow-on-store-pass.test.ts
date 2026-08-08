@@ -476,4 +476,154 @@ describe("PainPointMiner.run — Follow-on Fetch and Store Second Pass", () => {
       "store-from-follow-on",
     ]);
   });
+
+  it("degrades gracefully when one Follow-on Fetch throws, keeping seed and successful deepenings", async () => {
+    const brokenUrl = "https://news.ycombinator.com/item?id=broken-follow-on";
+    const okUrl = "https://reddit.com/r/freelance/comments/ok-follow-on";
+    const seed = evidence({
+      id: "seed-follow-on-mix",
+      quote: "Thread that points at a broken page and a good demand page",
+      followOnTargets: [
+        { url: brokenUrl, kind: "demand-signal" },
+        { url: okUrl, kind: "demand-signal" },
+      ],
+    });
+    const deepened = evidence({
+      id: "follow-on-ok",
+      quote: "Concrete wish for autopilot invoice chase from the good page",
+      url: okUrl,
+      structuralKey: "late-payments",
+    });
+
+    const fetchedUrls: string[] = [];
+    const followOnFetcher: FollowOnFetcher = {
+      async fetchPage(url) {
+        fetchedUrls.push(url);
+        if (url === brokenUrl) {
+          throw new Error("simulated Follow-on Fetch outage");
+        }
+        if (url === okUrl) {
+          return [deepened];
+        }
+        return [];
+      },
+    };
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [seed])],
+      embeddings: embeddingsByQuote({
+        [seed.quote]: INVOICE_VEC,
+        [deepened.quote]: DEMAND_PAGE_VEC,
+      }),
+      followOnFetcher,
+    });
+
+    const artifact = await miner.run({});
+
+    expect(fetchedUrls.sort()).toEqual([brokenUrl, okUrl].sort());
+    expect(artifact.evidence.map((item) => item.id)).toEqual([
+      "seed-follow-on-mix",
+      "follow-on-ok",
+    ]);
+  });
+
+  it("degrades gracefully when one Store Second Pass throws, keeping other Evidence", async () => {
+    const forumWave = evidence({
+      id: "forum-wave",
+      quote: "Wave keeps losing my invoice reminders — anyone else?",
+      signalSource: "reddit",
+      structuralKey: "wave-reminders",
+      mentionedApps: [{ id: "wave-accounting", store: "app-store" }],
+    });
+    const forumNotion = evidence({
+      id: "forum-notion",
+      quote: "Notion sync silently drops freelance invoice drafts",
+      signalSource: "hacker-news",
+      structuralKey: "notion-sync",
+      mentionedApps: [{ id: "notion", store: "play" }],
+    });
+    const storeWave = evidence({
+      id: "store-wave-ok",
+      quote: "App Store: invoice reminders silently fail in Wave",
+      url: "https://apps.apple.com/app/wave/id999",
+      signalSource: "app-store",
+      structuralKey: "wave-reminders",
+    });
+
+    const requestedApps: MentionedApp[] = [];
+    const storeReviewSource: StoreReviewSource = {
+      async fetchReviews(app) {
+        requestedApps.push(app);
+        if (app.id === "notion" && app.store === "play") {
+          throw new Error("simulated Store Second Pass outage");
+        }
+        if (app.id === "wave-accounting" && app.store === "app-store") {
+          return [storeWave];
+        }
+        return [];
+      },
+    };
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [forumWave, forumNotion])],
+      embeddings: embeddingsByQuote({
+        [forumWave.quote]: INVOICE_VEC,
+        [forumNotion.quote]: ALT_PAGE_VEC,
+        [storeWave.quote]: STORE_VEC,
+      }),
+      storeReviewSource,
+    });
+
+    const artifact = await miner.run({});
+
+    expect(requestedApps).toEqual([
+      { id: "wave-accounting", store: "app-store" },
+      { id: "notion", store: "play" },
+    ]);
+    expect(artifact.evidence.map((item) => item.id).sort()).toEqual([
+      "forum-notion",
+      "forum-wave",
+      "store-wave-ok",
+    ]);
+  });
+
+  it("treats empty successful Follow-on and Store fetches as empty batches", async () => {
+    const seed = evidence({
+      id: "seed-empty-batches",
+      quote: "Forum post that mentions Wave and links a demand page",
+      followOnTargets: [
+        {
+          url: "https://reddit.com/r/freelance/comments/empty-page",
+          kind: "demand-signal",
+        },
+      ],
+      mentionedApps: [{ id: "wave-accounting", store: "app-store" }],
+    });
+
+    const followOnFetcher: FollowOnFetcher = {
+      async fetchPage() {
+        return [];
+      },
+    };
+    const storeReviewSource: StoreReviewSource = {
+      async fetchReviews() {
+        return [];
+      },
+    };
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [seed])],
+      embeddings: embeddingsByQuote({
+        [seed.quote]: INVOICE_VEC,
+      }),
+      followOnFetcher,
+      storeReviewSource,
+    });
+
+    const artifact = await miner.run({});
+
+    expect(artifact.evidence.map((item) => item.id)).toEqual([
+      "seed-empty-batches",
+    ]);
+  });
 });
