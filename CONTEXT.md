@@ -93,7 +93,7 @@ Rough read of build/run cost drivers for a plausible solution. Not a revenue or 
 _Avoid_: Profit estimate, TAM, ARR projection
 
 **Source Catalog** (v1):
-Cold-start Signal Sources that work without paid APIs or required tokens: Hacker News, Lobsters, Lemmy, Dev.to, and a finite Discourse forum whitelist. Store Second Pass includes Apple App Store reviews. Token-gated or Cloud-blocked channels (e.g. Product Hunt, Reddit without usable access) are not required for a valid live run.
+Hacker News, Lobsters, Lemmy (lemmy.world), Dev.to, the verified Discourse host whitelist, and Apple App Store reviews (Store Second Pass). Default live path skips anything that needs a token or cannot be used normally on Cloud (e.g. Reddit public JSON, Product Hunt, fragile Play).
 _Avoid_: Treating Reddit or Product Hunt as mandatory for real usage, G2/Capterra (v1), GitHub issues as Entry (v1), Chrome Web Store (v1), unpaid sources with unusably low rate limits as primary Entry
 
 **Entry Catalog** (v1):
