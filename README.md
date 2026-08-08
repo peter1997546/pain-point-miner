@@ -32,7 +32,7 @@ Live cold-start adapters implement the same `SignalSource` port used by `run` (A
 
 App Store / Play implement `StoreReviewSource` (reviews only for apps mentioned in forum Evidence). Product Hunt / Indie Hackers implement `FollowOnFetcher` for referenced URLs — not cold-start firehoses (ADR-0007 / ADR-0010).
 
-### Live discovery path (Entry Catalog + deepenings + Embeddings)
+### Live discovery path (Entry Catalog + Follow-on / Store + Embeddings)
 
 `createLiveDiscoveryMiner` is the first-class composition: Entry Catalog cold start, Follow-on / Store Second Pass, and live Embeddings (`createOpenAiCompatibleEmbeddings`) behind `PainPointMiner.run`. It does **not** pair Entry Catalog Evidence with hash-only fixture Embeddings.
 
@@ -55,7 +55,7 @@ OPENAI_API_KEY=sk-... npm run cli -- --live --format json --out artifact.json
 # optional: PRODUCT_HUNT_TOKEN=... OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-Without `--live`, Script CLI keeps built-in fixtures (no live network / embedding API) for CI and local inspection. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH deepenings. CI injects recordings / doubles into `createLiveDiscoveryMiner` — no flaky live network.
+Without `--live`, Script CLI keeps built-in fixtures (no live network / embedding API) for CI and local inspection. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH Follow-on. CI injects recordings / doubles into `createLiveDiscoveryMiner` — no flaky live network.
 
 ### Defaults
 
