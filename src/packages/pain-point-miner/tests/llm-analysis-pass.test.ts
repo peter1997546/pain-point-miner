@@ -188,16 +188,24 @@ describe("LLM Analysis Pass (Hollow + Brief enrichment)", () => {
       }),
     );
 
+    const filledIntent = {
+      theme: "AI automation",
+      productShape: "solo-dev SaaS with a thin UI",
+      constraints: "nights and weekends only",
+      hardNos: "no marketplace",
+      successDefinition: "first paying customer within 90 days",
+    };
     const analysisPass = createLlmAnalysisPass({ llm });
     const input: AnalysisPassInput = {
       cluster: invoice,
-      intent: { theme: "AI automation" },
+      intent: filledIntent,
     };
     const outcome = await analysisPass.analyze(input);
 
     expect(llm.requests).toHaveLength(1);
     const request = llm.requests[0]!;
     expect(request.system).toBe(ANALYSIS_PASS_SYSTEM_PROMPT);
+    expect(request.system).toMatch(/productShape|preference notes/i);
     expect(request.user).toContain(invoice.id);
     for (const item of invoice.evidence) {
       expect(request.user).toContain(item.id);
@@ -210,7 +218,12 @@ describe("LLM Analysis Pass (Hollow + Brief enrichment)", () => {
       expect(request.user).not.toContain(item.url);
     }
     expect(request.user).not.toMatch(/full scrape|allClusters|corpus/i);
+    // Preference notes reach the Analysis Pass user payload.
     expect(request.user).toContain("AI automation");
+    expect(request.user).toContain("solo-dev SaaS with a thin UI");
+    expect(request.user).toContain("nights and weekends only");
+    expect(request.user).toContain("no marketplace");
+    expect(request.user).toContain("first paying customer within 90 days");
 
     expect(outcome.status).toBe("brief");
     if (outcome.status !== "brief") {

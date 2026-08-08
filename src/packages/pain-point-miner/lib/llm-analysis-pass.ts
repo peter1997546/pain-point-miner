@@ -30,7 +30,7 @@ Brief rules:
 - difficulty must be one of S, M, L.
 - competitionDensity is a 0..1 annotation for the Builder's Competition Filter — never a silent hard-kill.
 - Include every Brief field with real enrichment text — do not leave fields empty.
-- Intent (if present) is a preference note only; it must not invent crawl targets or rewrite mined Evidence.
+- Intent fields (theme, productShape, constraints, hardNos, successDefinition), when present, are preference notes only — e.g. shaping Delivery Cost commentary. They must not invent crawl targets, whitelist sources, or rewrite mined Evidence.
 
 Respond with a single JSON object and no prose outside JSON:
 Hollow:

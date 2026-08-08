@@ -75,7 +75,7 @@ const artifact = await skill.run({});
 
 For every entry in `gatedClusters` from the handoff, run Analysis Pass **separately** (parallel subagents OK):
 
-- **Input:** that cluster only (`cluster.id`, `cluster.evidence`, `cluster.signalMix`, `cluster.evidenceCount`) plus optional Intent (`theme`, …).
+- **Input:** that cluster only (`cluster.id`, `cluster.evidence`, `cluster.signalMix`, `cluster.evidenceCount`) plus optional Intent (`theme`, `productShape`, `constraints`, `hardNos`, `successDefinition`).
 - **Judgment:** Hollow → reject with reason; else emit a Pain Point **Brief**.
 - **Brief fields:** Pain Point summary, Evidence links, Target Market, Competitive Landscape, status-quo spend signals, Delivery Cost, difficulty S/M/L, Signal Mix, competition density annotation.
 

@@ -21,7 +21,7 @@ Agent-facing orchestration that calls the Script for mining, then fans out a **p
 _Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump
 
 **Intent**:
-Optional free-text fields the Builder *may* fill. Empty Intent is valid. Filled fields do not invent crawl targets; deepening is via Follow-on Fetch of concrete pages already found. May inform the Analysis Pass.
+Optional free-text fields the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields are preference notes for the Analysis Pass only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
 _Avoid_: Intake form, requirements form, restriction sheet
 
 **Theme**:
