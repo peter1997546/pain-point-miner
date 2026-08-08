@@ -9,10 +9,13 @@ import {
   createPainPointMiner,
   formatRunArtifact,
   toSkillMiningHandoff,
+  type AnalysisPass,
   type ArtifactFormat,
   type Embeddings,
   type FollowOnFetcher,
+  type Intent,
   type LiveDiscoveryMinerDeps,
+  type RunInput,
   type SignalSource,
   type StoreReviewSource,
 } from "./index.js";
@@ -22,11 +25,25 @@ export type CliIo = {
   embeddings?: Embeddings;
   followOnFetcher?: FollowOnFetcher;
   storeReviewSource?: StoreReviewSource;
+  /**
+   * Optional Analysis Pass for fixture / injectable runs.
+   * Lets Competition Filter and Intent→Analysis wiring be exercised offline.
+   */
+  analysisPass?: AnalysisPass;
   /** Env for `--live` (defaults to `process.env`). */
   env?: NodeJS.ProcessEnv;
   /** Overrides for the `--live` composition (injectable doubles / recordings). */
   liveDiscovery?: LiveDiscoveryMinerDeps;
   stdout?: { write(chunk: string): unknown };
+  stderr?: { write(chunk: string): unknown };
+};
+
+type ParsedCli = {
+  format: ArtifactFormat;
+  outPath: string | undefined;
+  skillHandoff: boolean;
+  live: boolean;
+  runInput: RunInput;
 };
 
 function parseFormat(value: string | undefined): ArtifactFormat {
@@ -39,16 +56,40 @@ function parseFormat(value: string | undefined): ArtifactFormat {
   throw new Error(`Unsupported --format: ${value} (use json|markdown)`);
 }
 
-function parseArgs(argv: string[]): {
-  format: ArtifactFormat;
-  outPath: string | undefined;
-  skillHandoff: boolean;
-  live: boolean;
-} {
+function requireValue(flag: string, value: string | undefined): string {
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${flag} requires a value`);
+  }
+  return value;
+}
+
+function parseFiniteNumber(flag: string, value: string | undefined): number {
+  const raw = requireValue(flag, value);
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${flag} requires a finite number`);
+  }
+  return parsed;
+}
+
+/** Count Gate / Saturation Stop K — glossary defaults are positive integers. */
+function parsePositiveNumber(flag: string, value: string | undefined): number {
+  const parsed = parseFiniteNumber(flag, value);
+  if (!(parsed > 0)) {
+    throw new Error(`${flag} requires a number greater than 0`);
+  }
+  return parsed;
+}
+
+function parseArgs(argv: string[]): ParsedCli {
   let format: ArtifactFormat = "markdown";
   let outPath: string | undefined;
   let skillHandoff = false;
   let live = false;
+  const intent: Intent = {};
+  let countGateThreshold: number | undefined;
+  let saturationStopK: number | undefined;
+  let competitionFilterThreshold: number | undefined;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -58,15 +99,12 @@ function parseArgs(argv: string[]): {
       continue;
     }
     if (arg === "--out") {
-      outPath = argv[i + 1];
-      if (!outPath) {
-        throw new Error("--out requires a path");
-      }
+      outPath = requireValue("--out", argv[i + 1]);
       i += 1;
       continue;
     }
     if (arg === "--handoff") {
-      const value = argv[i + 1];
+      const value = requireValue("--handoff", argv[i + 1]);
       if (value !== "skill") {
         throw new Error(`Unsupported --handoff: ${value} (use skill)`);
       }
@@ -78,18 +116,83 @@ function parseArgs(argv: string[]): {
       live = true;
       continue;
     }
+    if (arg === "--theme") {
+      intent.theme = requireValue("--theme", argv[i + 1]);
+      i += 1;
+      continue;
+    }
+    if (arg === "--product-shape") {
+      intent.productShape = requireValue("--product-shape", argv[i + 1]);
+      i += 1;
+      continue;
+    }
+    if (arg === "--constraints") {
+      intent.constraints = requireValue("--constraints", argv[i + 1]);
+      i += 1;
+      continue;
+    }
+    if (arg === "--hard-nos") {
+      intent.hardNos = requireValue("--hard-nos", argv[i + 1]);
+      i += 1;
+      continue;
+    }
+    if (arg === "--success-definition") {
+      intent.successDefinition = requireValue(
+        "--success-definition",
+        argv[i + 1],
+      );
+      i += 1;
+      continue;
+    }
+    if (arg === "--count-gate-threshold") {
+      countGateThreshold = parsePositiveNumber(
+        "--count-gate-threshold",
+        argv[i + 1],
+      );
+      i += 1;
+      continue;
+    }
+    if (arg === "--saturation-stop-k") {
+      saturationStopK = parsePositiveNumber("--saturation-stop-k", argv[i + 1]);
+      i += 1;
+      continue;
+    }
+    if (arg === "--competition-filter-threshold") {
+      competitionFilterThreshold = parseFiniteNumber(
+        "--competition-filter-threshold",
+        argv[i + 1],
+      );
+      i += 1;
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       throw new Error("HELP");
     }
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  return { format, outPath, skillHandoff, live };
+  const runInput: RunInput = {};
+  if (Object.keys(intent).length > 0) {
+    runInput.intent = intent;
+  }
+  if (countGateThreshold !== undefined) {
+    runInput.countGateThreshold = countGateThreshold;
+  }
+  if (saturationStopK !== undefined) {
+    runInput.saturationStopK = saturationStopK;
+  }
+  if (competitionFilterThreshold !== undefined) {
+    runInput.competitionFilterThreshold = competitionFilterThreshold;
+  }
+
+  return { format, outPath, skillHandoff, live, runInput };
 }
 
-const HELP = `Usage: pain-point-miner [--live] [--format json|markdown] [--handoff skill] [--out path]
+const HELP = `Usage: pain-point-miner [options]
 
-Runs PainPointMiner.run with empty Intent defaults and emits a RunArtifact.
+Runs PainPointMiner.run with the same RunInput contract as the library and
+emits a RunArtifact. Omitted Intent / threshold flags keep documented defaults
+(empty Intent {}, Count Gate 5, Saturation Stop 20, no Competition Filter).
 
 Default (no --live): fixture Signal Sources / Embeddings / Follow-on / Store
 (no live network or embedding API) for CI and local inspection.
@@ -98,13 +201,24 @@ Default (no --live): fixture Signal Sources / Embeddings / Follow-on / Store
 Embeddings (OPENAI_API_KEY required). Optional PRODUCT_HUNT_TOKEN for PH
 Follow-on. Does not use hash-only fixture Embeddings.
 
+Intent fields are preference notes only — they do not whitelist, drop, or
+invent Signal Sources / crawl targets.
+
 Options:
-  --live     Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
-  --format   Output format (default: markdown)
-  --handoff  skill — emit condensed gated clusters for Skill Analysis Pass
-             (JSON only; omits full scrape evidence[])
-  --out      Write to a file instead of stdout
-  -h, --help Show this help
+  --live                            Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
+  --format                          Output format: json|markdown (default: markdown)
+  --handoff                         skill — emit condensed gated clusters for Skill Analysis Pass
+                                    (JSON only; omits full scrape evidence[])
+  --out                             Write to a file instead of stdout
+  --theme                           Intent Theme preference note
+  --product-shape                   Intent product shape preference note
+  --constraints                     Intent constraints preference note
+  --hard-nos                        Intent hard nos preference note
+  --success-definition              Intent success definition preference note
+  --count-gate-threshold            Count Gate N (default: 5)
+  --saturation-stop-k               Saturation Stop K (default: 20)
+  --competition-filter-threshold    Competition Filter density cutoff (default: none)
+  -h, --help                        Show this help
 `;
 
 function buildMiner(live: boolean, io: CliIo) {
@@ -116,6 +230,9 @@ function buildMiner(live: boolean, io: CliIo) {
         io.followOnFetcher ?? createDefaultFixtureFollowOnFetcher(),
       storeReviewSource:
         io.storeReviewSource ?? createDefaultFixtureStoreReviewSource(),
+      ...(io.analysisPass !== undefined
+        ? { analysisPass: io.analysisPass }
+        : {}),
     });
   }
 
@@ -154,15 +271,16 @@ export async function runCli(
   io: CliIo = {},
 ): Promise<number> {
   const stdout = io.stdout ?? process.stdout;
+  const stderr = io.stderr ?? process.stderr;
 
   try {
-    const { format, outPath, skillHandoff, live } = parseArgs(argv);
+    const { format, outPath, skillHandoff, live, runInput } = parseArgs(argv);
     if (skillHandoff && format !== "json") {
       throw new Error("--handoff skill requires --format json");
     }
 
     const miner = buildMiner(live, io);
-    const artifact = await miner.run({});
+    const artifact = await miner.run(runInput);
     const rendered = skillHandoff
       ? `${JSON.stringify(toSkillMiningHandoff(artifact), null, 2)}\n`
       : formatRunArtifact(artifact, format);
@@ -179,7 +297,7 @@ export async function runCli(
       return 0;
     }
     const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`${message}\n`);
+    stderr.write(`${message}\n`);
     return 1;
   }
 }

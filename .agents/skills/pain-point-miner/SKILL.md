@@ -29,11 +29,14 @@ From the repo root. Prefer the **Skill handoff** so chat never loads the full sc
 npm install
 # Offline fixtures (default — no live network / embedding API)
 npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json
+# Optional Intent / RunInput overrides (preference notes only — not crawl filters)
+npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json \
+  --theme "AI automation" --count-gate-threshold 5
 # Live discovery — Entry Catalog + Follow-on/Store + live Embeddings
 OPENAI_API_KEY=sk-... npm run cli -- --live --format json --handoff skill --out .pain-point-miner/handoff.json
 ```
 
-That file carries only `intent`, `gatedClusters`, and `saturationStopped` (`toSkillMiningHandoff`). Use a full `--format json` artifact only for local inspection outside Analysis Pass.
+That file carries only `intent`, `gatedClusters`, and `saturationStopped` (`toSkillMiningHandoff`). Intent flags on the CLI land on `intent` for the Analysis Pass. Use a full `--format json` artifact only for local inspection outside Analysis Pass.
 
 Or programmatically — Script mining **without** an `analysisPass` port, then Skill fan-out.
 

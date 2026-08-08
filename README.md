@@ -76,17 +76,24 @@ Without `--live`, Script CLI keeps built-in fixtures (no live network / embeddin
 
 ## Script CLI
 
-The Script mines and gates only (no Analysis Pass). Use it for condensed gated candidates the Skill will analyze:
+The Script mines and gates only (no Analysis Pass by default). It exposes the same `RunInput` contract as `PainPointMiner.run`: optional Intent preference notes and Count Gate / Saturation Stop / Competition Filter overrides. Omitted flags keep glossary defaults. Use it for condensed gated candidates the Skill will analyze:
 
 ```bash
 npm install
 # Offline fixtures (CI / local inspection)
 npm run cli -- --format markdown
 npm run cli -- --format json --out artifact.json
+# Optional Intent + gate overrides (preference notes only — not crawl filters)
+npm run cli -- --format json --out artifact.json \
+  --theme "AI automation" \
+  --product-shape "solo-dev SaaS" \
+  --count-gate-threshold 5 \
+  --saturation-stop-k 20
 # Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
 OPENAI_API_KEY=sk-... npm run cli -- --live --format json --out artifact.json
 # Condensed Skill handoff (gatedClusters only — no full scrape evidence[])
-npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json
+npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json \
+  --theme "AI automation"
 ```
 
 ## Skill (Script + per-cluster fan-out)
