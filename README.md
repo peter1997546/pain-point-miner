@@ -24,6 +24,32 @@ const artifact = await miner.run({});
 
 Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → optional **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
 
+### Entry Catalog adapters (Reddit + HN)
+
+Live cold-start adapters implement the same `SignalSource` port used by `run` (ADR-0010). They cover primary Reddit boards × demand query patterns and Ask HN–style HN searches. Product Hunt, Indie Hackers, and large founder boards (e.g. `r/Entrepreneur`) are **not** part of this wave.
+
+CI uses injectable `JsonHttpClient` recordings — no live network required. For a manual live crawl:
+
+```ts
+import {
+  createPainPointMiner,
+  createFixtureEmbeddings,
+  createEntryCatalogSignalSources,
+  createFetchHttpClient,
+} from "pain-point-miner";
+
+const miner = createPainPointMiner({
+  signalSources: createEntryCatalogSignalSources({
+    http: createFetchHttpClient(),
+  }),
+  embeddings: createFixtureEmbeddings(),
+});
+
+const artifact = await miner.run({});
+```
+
+Script CLI still defaults to built-in fixtures so local/CI inspection stays offline.
+
 ### Defaults
 
 | Input | Default |
