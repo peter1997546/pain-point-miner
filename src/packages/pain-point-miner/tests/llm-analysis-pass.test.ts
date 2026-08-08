@@ -123,7 +123,31 @@ describe("LLM Analysis Pass (Hollow + Brief enrichment)", () => {
     expect(ANALYSIS_PASS_SYSTEM_PROMPT).toMatch(
       /penetration|market fit|country-of-origin/i,
     );
+    expect(ANALYSIS_PASS_SYSTEM_PROMPT).toMatch(/Mature Solution/i);
     expect(ANALYSIS_PASS_SYSTEM_PROMPT).toMatch(/do not invent Evidence/i);
+  });
+
+  it("fails closed when a Brief response omits required enrichment fields", async () => {
+    const real = gatedCluster(
+      "cluster-incomplete",
+      clusterOfFive("incomplete", [
+        "demand-signal",
+        "demand-signal",
+        "demand-signal",
+        "demand-signal",
+        "demand-signal",
+      ]),
+    );
+    const llm = scriptedLlm(() =>
+      JSON.stringify({
+        status: "brief",
+        painPointSummary: "Only a summary, missing the rest.",
+      }),
+    );
+
+    await expect(
+      createLlmAnalysisPass({ llm }).analyze({ cluster: real, intent: {} }),
+    ).rejects.toThrow(/missing required field/i);
   });
 
   it("analyzes one Candidate Cluster at a time without stuffing sibling Evidence into the LLM call", async () => {

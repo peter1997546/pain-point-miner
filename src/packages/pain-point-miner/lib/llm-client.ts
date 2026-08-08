@@ -1,3 +1,5 @@
+import { asString, pathGet } from "./parse-unknown.js";
+
 /**
  * Injectable LLM completion port for Analysis Pass.
  * Tests / CI supply scripted responses; live runs may use
@@ -57,33 +59,11 @@ export function createOpenAiCompatibleLlmClient(
         );
       }
       const payload: unknown = await response.json();
-      const content = extractChatContent(payload);
+      const content = asString(pathGet(payload, ["choices", 0, "message", "content"]));
       if (!content) {
         throw new Error("LLM response missing assistant content");
       }
       return content;
     },
   };
-}
-
-function extractChatContent(payload: unknown): string | undefined {
-  if (typeof payload !== "object" || payload === null) {
-    return undefined;
-  }
-  const choices = (payload as { choices?: unknown }).choices;
-  if (!Array.isArray(choices) || choices.length === 0) {
-    return undefined;
-  }
-  const first = choices[0];
-  if (typeof first !== "object" || first === null) {
-    return undefined;
-  }
-  const message = (first as { message?: unknown }).message;
-  if (typeof message !== "object" || message === null) {
-    return undefined;
-  }
-  const content = (message as { content?: unknown }).content;
-  return typeof content === "string" && content.length > 0
-    ? content
-    : undefined;
 }
