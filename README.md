@@ -32,41 +32,30 @@ Live cold-start adapters implement the same `SignalSource` port used by `run` (A
 
 App Store / Play implement `StoreReviewSource` (reviews only for apps mentioned in forum Evidence). Product Hunt / Indie Hackers implement `FollowOnFetcher` for referenced URLs — not cold-start firehoses (ADR-0007 / ADR-0010).
 
-### Live Embeddings (meaning similarity)
+### Live discovery path (Entry Catalog + deepenings + Embeddings)
 
-`createOpenAiCompatibleEmbeddings` implements the existing injectable `Embeddings` port so Candidate Clusters can group the same Pain Point across different wording via cosine similarity (ADR-0005). CI uses a scripted / recorded `fetchImpl` — no live network. Script CLI still defaults to `createFixtureEmbeddings()` for offline / deterministic mining.
-
-For a manual live crawl with meaning-aware clustering:
+`createLiveDiscoveryMiner` is the first-class composition: Entry Catalog cold start, Follow-on / Store Second Pass, and live Embeddings (`createOpenAiCompatibleEmbeddings`) behind `PainPointMiner.run`. It does **not** pair Entry Catalog Evidence with hash-only fixture Embeddings.
 
 ```ts
-import {
-  createPainPointMiner,
-  createOpenAiCompatibleEmbeddings,
-  createEntryCatalogSignalSources,
-  createFetchHttpClient,
-  createSourceCatalogFollowOnFetcher,
-  createStoreReviewSource,
-} from "pain-point-miner";
+import { createLiveDiscoveryMiner } from "pain-point-miner";
 
-const http = createFetchHttpClient();
-
-const miner = createPainPointMiner({
-  signalSources: createEntryCatalogSignalSources({ http }),
-  embeddings: createOpenAiCompatibleEmbeddings({
-    apiKey: process.env.OPENAI_API_KEY!,
-    model: process.env.OPENAI_EMBEDDING_MODEL ?? "text-embedding-3-small",
-  }),
-  followOnFetcher: createSourceCatalogFollowOnFetcher({
-    http,
-    productHuntAccessToken: process.env.PRODUCT_HUNT_TOKEN,
-  }),
-  storeReviewSource: createStoreReviewSource({ http }),
+const miner = createLiveDiscoveryMiner({
+  apiKey: process.env.OPENAI_API_KEY!,
+  embeddingModel: process.env.OPENAI_EMBEDDING_MODEL,
+  productHuntAccessToken: process.env.PRODUCT_HUNT_TOKEN,
 });
 
 const artifact = await miner.run({});
 ```
 
-Script CLI still defaults to built-in fixtures so local/CI inspection stays offline. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH deepenings. Live embeddings need an API key when you opt in; omit them and keep fixtures for offline runs.
+One-command Script CLI (same composition):
+
+```bash
+OPENAI_API_KEY=sk-... npm run cli -- --live --format json --out artifact.json
+# optional: PRODUCT_HUNT_TOKEN=... OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+Without `--live`, Script CLI keeps built-in fixtures (no live network / embedding API) for CI and local inspection. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH deepenings. CI injects recordings / doubles into `createLiveDiscoveryMiner` — no flaky live network.
 
 ### Defaults
 
@@ -77,7 +66,8 @@ Script CLI still defaults to built-in fixtures so local/CI inspection stays offl
 | Saturation Stop | Halt once **20** Count-Gated clusters exist |
 | Follow-on / Store Second Pass / Analysis Pass | Skipped when those ports are omitted |
 | Competition Filter threshold | Omitted — all annotated Briefs stay visible (no silent hard-kill) |
-| Script CLI Signal Sources / Embeddings / Follow-on / Store | Built-in fixtures (no live network / LLM) |
+| Script CLI (default) Signal Sources / Embeddings / Follow-on / Store | Built-in fixtures (no live network / embedding API) |
+| Script CLI `--live` | Entry Catalog + Follow-on / Store + live Embeddings (`OPENAI_API_KEY`) |
 | Script CLI `--format` | `markdown` |
 
 `RunArtifact` exposes quotable Evidence references, Candidate Clusters (with Evidence Count + Signal Mix hints), gated clusters, Analysis outcomes (Hollow rejections + Pain Point Briefs), and a Competition Filter view (`visibleBriefs` / `hiddenByCompetitionFilter`) that never deletes the full annotated `briefs` set. The raw scrape corpus is not part of the public contract.
@@ -90,8 +80,11 @@ The Script mines and gates only (no Analysis Pass). Use it for condensed gated c
 
 ```bash
 npm install
+# Offline fixtures (CI / local inspection)
 npm run cli -- --format markdown
 npm run cli -- --format json --out artifact.json
+# Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
+OPENAI_API_KEY=sk-... npm run cli -- --live --format json --out artifact.json
 # Condensed Skill handoff (gatedClusters only — no full scrape evidence[])
 npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json
 ```
