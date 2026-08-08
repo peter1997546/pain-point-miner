@@ -75,13 +75,13 @@ function parseEmbeddingPayload(
     }
     const vector: number[] = [];
     for (const value of embedding) {
-      const dim = asNumber(value);
-      if (dim === undefined) {
+      const component = asNumber(value);
+      if (component === undefined) {
         throw new Error(
           `Embeddings response has non-numeric vector at index ${index}`,
         );
       }
-      vector.push(dim);
+      vector.push(component);
     }
     byIndex.set(index, vector);
   }

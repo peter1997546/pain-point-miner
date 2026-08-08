@@ -15,7 +15,9 @@ import {
  * - createFixtureEmbeddings remains the offline / deterministic Script default
  */
 
-const INVOICE_VEC = [1, 0, 0] as const;
+/** Near-parallel unit-ish vectors (cosine ≈ 0.995 ≥ default meaning threshold 0.8). */
+const INVOICE_VEC_A = [1, 0, 0] as const;
+const INVOICE_VEC_B = [0.995, 0.1, 0] as const;
 const SCHEDULE_VEC = [0, 1, 0] as const;
 
 function evidence(
@@ -120,8 +122,8 @@ describe("Live Embeddings adapter (OpenAI-compatible)", () => {
     const embeddings = createOpenAiCompatibleEmbeddings({
       apiKey: "test-key",
       fetchImpl: scriptedEmbeddingsFetch({
-        [paraphraseA.quote]: INVOICE_VEC,
-        [paraphraseB.quote]: INVOICE_VEC,
+        [paraphraseA.quote]: INVOICE_VEC_A,
+        [paraphraseB.quote]: INVOICE_VEC_B,
         [unrelated.quote]: SCHEDULE_VEC,
       }),
     });
