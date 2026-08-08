@@ -45,23 +45,17 @@ describe("PainPointMiner.run", () => {
   });
 
   it("degrades gracefully when one Signal Source throws, keeping Evidence from succeeding sources", async () => {
-    const failingBefore = {
-      name: "broken-before",
+    const failingSource = (name: string, message: string) => ({
+      name,
       async collect() {
-        throw new Error("simulated Signal Source outage");
+        throw new Error(message);
       },
-    };
-    const failingAfter = {
-      name: "broken-after",
-      async collect() {
-        throw new Error("another Signal Source outage");
-      },
-    };
+    });
     const miner = createPainPointMiner({
       signalSources: [
-        failingBefore,
+        failingSource("broken-before", "simulated Signal Source outage"),
         ...createTestSignalSources(),
-        failingAfter,
+        failingSource("broken-after", "another Signal Source outage"),
       ],
       embeddings: createFixtureEmbeddings(),
     });
