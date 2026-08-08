@@ -1,18 +1,24 @@
 #!/usr/bin/env node
 import { writeFile } from "node:fs/promises";
 import {
+  createDefaultFixtureFollowOnFetcher,
+  createDefaultFixtureStoreReviewSource,
   createFixtureEmbeddings,
   createFixtureSignalSources,
   createPainPointMiner,
   formatRunArtifact,
   type ArtifactFormat,
   type Embeddings,
+  type FollowOnFetcher,
   type SignalSource,
+  type StoreReviewSource,
 } from "./index.js";
 
 export type CliIo = {
   signalSources?: readonly SignalSource[];
   embeddings?: Embeddings;
+  followOnFetcher?: FollowOnFetcher;
+  storeReviewSource?: StoreReviewSource;
   stdout?: { write(chunk: string): unknown };
 };
 
@@ -79,6 +85,10 @@ export async function runCli(
     const miner = createPainPointMiner({
       signalSources: io.signalSources ?? createFixtureSignalSources(),
       embeddings: io.embeddings ?? createFixtureEmbeddings(),
+      followOnFetcher:
+        io.followOnFetcher ?? createDefaultFixtureFollowOnFetcher(),
+      storeReviewSource:
+        io.storeReviewSource ?? createDefaultFixtureStoreReviewSource(),
     });
     const artifact = await miner.run({});
     const rendered = formatRunArtifact(artifact, format);

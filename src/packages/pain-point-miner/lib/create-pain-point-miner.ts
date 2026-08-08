@@ -2,7 +2,9 @@ import { clusterEvidence } from "./cluster-evidence.js";
 import type {
   CandidateCluster,
   EvidenceRef,
+  FollowOnTarget,
   Intent,
+  MentionedApp,
   PainPointMiner,
   PainPointMinerDeps,
   RunArtifact,
@@ -13,6 +15,8 @@ import {
   DEFAULT_MEANING_SIMILARITY_THRESHOLD,
   DEFAULT_SATURATION_STOP_K,
   DEFAULT_STRUCTURAL_KEY_SIMILARITY_THRESHOLD,
+  FORUM_SIGNAL_SOURCES,
+  mentionedAppKey,
 } from "./types.js";
 
 const EMPTY_INTENT: Intent = {};
@@ -43,6 +47,98 @@ function gatedClustersOf(
   return clusters.filter((cluster) => cluster.passedCountGate);
 }
 
+function appendUniqueEvidence(
+  evidence: EvidenceRef[],
+  batch: readonly EvidenceRef[],
+): void {
+  const seen = new Set(evidence.map((item) => item.id));
+  for (const item of batch) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      evidence.push(item);
+    }
+  }
+}
+
+/**
+ * Prefer Demand Signal deepenings over generic alternative/review pages
+ * when ordering Follow-on Fetch (ADR-0008).
+ */
+function planFollowOnTargets(
+  evidence: readonly EvidenceRef[],
+): FollowOnTarget[] {
+  const byUrl = new Map<string, FollowOnTarget>();
+  for (const item of evidence) {
+    for (const target of item.followOnTargets ?? []) {
+      const existing = byUrl.get(target.url);
+      if (!existing) {
+        byUrl.set(target.url, target);
+        continue;
+      }
+      // Demand Signal wins if the same URL was labeled both ways.
+      if (
+        existing.kind === "alternative-review" &&
+        target.kind === "demand-signal"
+      ) {
+        byUrl.set(target.url, target);
+      }
+    }
+  }
+
+  return [...byUrl.values()].sort((left, right) => {
+    if (left.kind === right.kind) {
+      return left.url.localeCompare(right.url);
+    }
+    return left.kind === "demand-signal" ? -1 : 1;
+  });
+}
+
+function planMentionedApps(evidence: readonly EvidenceRef[]): MentionedApp[] {
+  const byKey = new Map<string, MentionedApp>();
+  for (const item of evidence) {
+    if (!FORUM_SIGNAL_SOURCES.has(item.signalSource)) {
+      continue;
+    }
+    for (const app of item.mentionedApps ?? []) {
+      const key = mentionedAppKey(app);
+      if (!byKey.has(key)) {
+        byKey.set(key, app);
+      }
+    }
+  }
+  return [...byKey.values()].sort((left, right) => {
+    const storeCmp = left.store.localeCompare(right.store);
+    return storeCmp !== 0 ? storeCmp : left.id.localeCompare(right.id);
+  });
+}
+
+type SaturationState = {
+  evidence: EvidenceRef[];
+  candidateClusters: CandidateCluster[];
+  saturationStopped: boolean;
+};
+
+async function ingestBatch(
+  state: SaturationState,
+  batch: readonly EvidenceRef[],
+  deps: PainPointMinerDeps,
+  countGateThreshold: number,
+  saturationStopK: number,
+): Promise<void> {
+  if (state.saturationStopped || batch.length === 0) {
+    return;
+  }
+  appendUniqueEvidence(state.evidence, batch);
+  state.candidateClusters = await buildClusters(
+    state.evidence,
+    deps,
+    countGateThreshold,
+  );
+  if (gatedClustersOf(state.candidateClusters).length >= saturationStopK) {
+    state.saturationStopped = true;
+  }
+}
+
 export function createPainPointMiner(
   deps: PainPointMinerDeps,
 ): PainPointMiner {
@@ -54,32 +150,72 @@ export function createPainPointMiner(
       const saturationStopK =
         input.saturationStopK ?? DEFAULT_SATURATION_STOP_K;
 
-      const evidence: EvidenceRef[] = [];
-      let candidateClusters: CandidateCluster[] = [];
-      let saturationStopped = false;
+      const state: SaturationState = {
+        evidence: [],
+        candidateClusters: [],
+        saturationStopped: false,
+      };
 
       for (const source of deps.signalSources) {
         // Intent is echoed on the artifact but does not select Signal Sources.
         const batch = await source.collect();
-        evidence.push(...batch);
-
-        candidateClusters = await buildClusters(
-          evidence,
+        await ingestBatch(
+          state,
+          batch,
           deps,
           countGateThreshold,
+          saturationStopK,
         );
-        if (gatedClustersOf(candidateClusters).length >= saturationStopK) {
-          saturationStopped = true;
+        if (state.saturationStopped) {
           break;
+        }
+      }
+
+      // Re-plan after each deepen so pages discovered mid-run are pursued.
+      if (deps.followOnFetcher) {
+        const fetchedUrls = new Set<string>();
+        while (!state.saturationStopped) {
+          const next = planFollowOnTargets(state.evidence).find(
+            (target) => !fetchedUrls.has(target.url),
+          );
+          if (!next) {
+            break;
+          }
+          fetchedUrls.add(next.url);
+          const batch = await deps.followOnFetcher.fetchPage(next.url);
+          await ingestBatch(
+            state,
+            batch,
+            deps,
+            countGateThreshold,
+            saturationStopK,
+          );
+        }
+      }
+
+      if (deps.storeReviewSource && !state.saturationStopped) {
+        const apps = planMentionedApps(state.evidence);
+        for (const app of apps) {
+          const batch = await deps.storeReviewSource.fetchReviews(app);
+          await ingestBatch(
+            state,
+            batch,
+            deps,
+            countGateThreshold,
+            saturationStopK,
+          );
+          if (state.saturationStopped) {
+            break;
+          }
         }
       }
 
       return {
         intent,
-        evidence,
-        candidateClusters,
-        gatedClusters: gatedClustersOf(candidateClusters),
-        saturationStopped,
+        evidence: state.evidence,
+        candidateClusters: state.candidateClusters,
+        gatedClusters: gatedClustersOf(state.candidateClusters),
+        saturationStopped: state.saturationStopped,
       };
     },
   };
