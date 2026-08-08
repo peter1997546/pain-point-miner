@@ -20,7 +20,7 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles for tests; live network / LLM adapters come later).
+`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles / scripted `LlmClient` for tests; live network / OpenAI-compatible LLM for manual runs).
 
 Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → optional **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
 
@@ -97,12 +97,16 @@ Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-
 2. Fan out Analysis Pass **one gated Candidate Cluster at a time** (parallel agents OK); each step sees only that cluster’s Evidence plus Brief context — never the full scrape.
 3. Assemble Briefs / Hollow rejections; optional Competition Filter after emission.
 
+`createLlmAnalysisPass({ llm })` implements the Analysis Pass port: Hollow rejection (wish-only / platitude), Brief enrichment (Competitive Landscape with local penetration, status-quo spend, Delivery Cost as cost drivers, difficulty S/M/L, Signal Mix), and Evidence-link sanitization (never invents links). Inject a scripted `LlmClient` in tests, or `createOpenAiCompatibleLlmClient` for live runs.
+
 Programmatic adapter:
 
 ```ts
 import {
   createPainPointMiner,
   createSkillOrchestrator,
+  createLlmAnalysisPass,
+  createOpenAiCompatibleLlmClient,
   createFixtureEmbeddings,
   createFixtureSignalSources,
 } from "pain-point-miner";
@@ -115,7 +119,12 @@ const scriptMiner = createPainPointMiner({
 
 const skill = createSkillOrchestrator({
   runMining: (input) => scriptMiner.run(input),
-  analysisPass, // test double or live LLM
+  analysisPass: createLlmAnalysisPass({
+    llm: createOpenAiCompatibleLlmClient({
+      apiKey: process.env.OPENAI_API_KEY!,
+      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    }),
+  }),
 });
 
 const artifact = await skill.run({});

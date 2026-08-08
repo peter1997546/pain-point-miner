@@ -42,6 +42,8 @@ import {
   createDefaultFixtureFollowOnFetcher,
   createDefaultFixtureStoreReviewSource,
   createSkillOrchestrator,
+  createLlmAnalysisPass,
+  createOpenAiCompatibleLlmClient,
 } from "pain-point-miner";
 
 const scriptMiner = createPainPointMiner({
@@ -52,9 +54,16 @@ const scriptMiner = createPainPointMiner({
   // no analysisPass — Skill owns fan-out
 });
 
+const analysisPass = createLlmAnalysisPass({
+  llm: createOpenAiCompatibleLlmClient({
+    apiKey: process.env.OPENAI_API_KEY!,
+    model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+  }),
+});
+
 const skill = createSkillOrchestrator({
   runMining: (input) => scriptMiner.run(input),
-  analysisPass, // test double or live LLM adapter
+  analysisPass, // createLlmAnalysisPass or a test double
 });
 
 const artifact = await skill.run({});
@@ -80,10 +89,11 @@ Merge outcomes into the shared `RunArtifact` shape (`briefs`, `hollowRejections`
 
 **Done when:** the Builder can inspect Briefs + Hollow rejections + filter visibility without a full-corpus dump in the chat transcript.
 
-## Smoke path (fixtures + test double)
+## Smoke path (fixtures + test double / LLM contract)
 
 ```bash
 npm test -- src/packages/pain-point-miner/tests/skill-orchestrator.test.ts
+npm test -- src/packages/pain-point-miner/tests/llm-analysis-pass.test.ts
 ```
 
-That suite exercises Script mining → parallel per-cluster Analysis Pass with a test-double port (no live LLM). Live LLM Analysis Pass is a later ticket.
+The orchestrator suite uses a test-double Analysis Pass. `llm-analysis-pass.test.ts` covers `createLlmAnalysisPass` with a scripted `LlmClient` (Hollow criteria, Brief enrichment, no invented Evidence links, per-cluster prompts — no live LLM in CI).
