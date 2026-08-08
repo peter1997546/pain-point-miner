@@ -2,12 +2,21 @@ export { applyCompetitionFilter } from "./lib/competition-filter.js";
 export { createPainPointMiner } from "./lib/create-pain-point-miner.js";
 export { createFixtureEmbeddings } from "./lib/fixture-embeddings.js";
 export {
+  createLocalEmbeddings,
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  DEFAULT_LOCAL_EMBEDDINGS_CACHE_DIR,
+  resolveLocalEmbeddingsCacheDir,
+  type LocalEmbeddingExtractor,
+  type LocalEmbeddingsInit,
+} from "./lib/local-embeddings.js";
+export {
   createOpenAiCompatibleEmbeddings,
   type OpenAiCompatibleEmbeddingsInit,
 } from "./lib/openai-compatible-embeddings.js";
 export {
   createLiveDiscoveryMiner,
   type LiveDiscoveryMinerDeps,
+  type LiveEmbeddingsBackend,
 } from "./lib/live-discovery-miner.js";
 export {
   createFixtureFollowOnFetcher,

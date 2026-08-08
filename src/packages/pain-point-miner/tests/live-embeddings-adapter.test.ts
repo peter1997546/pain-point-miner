@@ -8,11 +8,12 @@ import {
 } from "../index.js";
 
 /**
- * Seams under test (ticket #21 / ADR-0005):
- * - createOpenAiCompatibleEmbeddings — live Embeddings adapter on the existing port
+ * Seams under test (ticket #21 / ADR-0005; demoted by #35 / ADR-0012):
+ * - createOpenAiCompatibleEmbeddings — optional/experimental Embeddings adapter
  * - Injectable fetchImpl (scripted / recorded responses — no live network in CI)
  * - PainPointMiner.run — grouping expectations on the artifact (not crawler / prompt internals)
- * - createFixtureEmbeddings remains the offline / deterministic Script default
+ * - createFixtureEmbeddings remains the offline / deterministic non-`--live` Script default
+ * - Product live path defaults to createLocalEmbeddings (see local-embeddings / live-discovery-path)
  */
 
 /** Near-parallel unit-ish vectors (cosine ≈ 0.995 ≥ default meaning threshold 0.8). */

@@ -20,7 +20,7 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles / scripted `LlmClient` / recorded embedding HTTP for tests; live network / OpenAI-compatible APIs for manual runs).
+`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles / scripted local Embeddings for tests; live network + free/local Embeddings for real usage; optional experimental OpenAI-compatible adapters).
 
 Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → optional **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
 
@@ -34,15 +34,15 @@ App Store / Play implement `StoreReviewSource` (reviews only for apps mentioned 
 
 ### Live discovery path (Entry Catalog + Follow-on / Store + Embeddings)
 
-`createLiveDiscoveryMiner` is the first-class composition: Entry Catalog cold start, Follow-on / Store Second Pass, and live Embeddings (`createOpenAiCompatibleEmbeddings`) behind `PainPointMiner.run`. It does **not** pair Entry Catalog Evidence with hash-only fixture Embeddings.
+`createLiveDiscoveryMiner` is the first-class composition: Entry Catalog cold start, Follow-on / Store Second Pass, and **free/local Embeddings** (`createLocalEmbeddings`, ADR-0012) behind `PainPointMiner.run`. It does **not** pair Entry Catalog Evidence with hash-only fixture Embeddings. OpenAI-compatible embeddings are optional/experimental only.
 
 ```ts
 import { createLiveDiscoveryMiner } from "pain-point-miner";
 
+// Product path — no paid embedding API key.
 const miner = createLiveDiscoveryMiner({
-  apiKey: process.env.OPENAI_API_KEY!,
-  embeddingModel: process.env.OPENAI_EMBEDDING_MODEL,
   productHuntAccessToken: process.env.PRODUCT_HUNT_TOKEN,
+  // Optional: localEmbeddings: { cacheDir: process.env.PPM_EMBEDDINGS_CACHE_DIR }
 });
 
 const artifact = await miner.run({});
@@ -51,11 +51,12 @@ const artifact = await miner.run({});
 One-command Script CLI (same composition):
 
 ```bash
-OPENAI_API_KEY=sk-... npm run cli -- --live --format json --out artifact.json
-# optional: PRODUCT_HUNT_TOKEN=... OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+npm run cli -- --live --format json --out artifact.json
+# optional: PRODUCT_HUNT_TOKEN=... PPM_EMBEDDINGS_CACHE_DIR=.pain-point-miner/models
+# experimental paid backend only: PPM_EMBEDDINGS_BACKEND=openai-compatible OPENAI_API_KEY=sk-...
 ```
 
-Without `--live`, Script CLI keeps built-in fixtures (no live network / embedding API) for CI and local inspection. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH Follow-on. CI injects recordings / doubles into `createLiveDiscoveryMiner` — no flaky live network.
+Without `--live`, Script CLI keeps built-in fixtures (no live network / embedding API) for CI and local inspection. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH Follow-on. CI injects local Embeddings doubles / recordings into `createLiveDiscoveryMiner` — no Hub download or paid API in tests.
 
 ### Defaults
 
@@ -67,7 +68,7 @@ Without `--live`, Script CLI keeps built-in fixtures (no live network / embeddin
 | Follow-on / Store Second Pass / Analysis Pass | Skipped when those ports are omitted |
 | Competition Filter threshold | Omitted — all annotated Briefs stay visible (no silent hard-kill) |
 | Script CLI (default) Signal Sources / Embeddings / Follow-on / Store | Built-in fixtures (no live network / embedding API) |
-| Script CLI `--live` | Entry Catalog + Follow-on / Store + live Embeddings (`OPENAI_API_KEY`) |
+| Script CLI `--live` | Entry Catalog + Follow-on / Store + free/local Embeddings (no paid API key; model cache via `PPM_EMBEDDINGS_CACHE_DIR`) |
 | Script CLI `--format` | `markdown` |
 
 `RunArtifact` exposes quotable Evidence references, Candidate Clusters (with Evidence Count + Signal Mix hints), gated clusters, Analysis outcomes (Hollow rejections + Pain Point Briefs), and a Competition Filter view (`visibleBriefs` / `hiddenByCompetitionFilter`) that never deletes the full annotated `briefs` set. The raw scrape corpus is not part of the public contract.
@@ -89,8 +90,8 @@ npm run cli -- --format json --out artifact.json \
   --product-shape "solo-dev SaaS" \
   --count-gate-threshold 5 \
   --saturation-stop-k 20
-# Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
-OPENAI_API_KEY=sk-... npm run cli -- --live --format json --out artifact.json
+# Live discovery (Entry Catalog + Follow-on/Store + free/local Embeddings)
+npm run cli -- --live --format json --out artifact.json
 # Condensed Skill handoff (gatedClusters only — no full scrape evidence[])
 npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json \
   --theme "AI automation"
