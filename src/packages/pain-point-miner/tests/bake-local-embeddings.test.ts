@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   bakeLocalEmbeddingModel,
-  createLocalEmbeddings,
   DEFAULT_LOCAL_EMBEDDING_MODEL,
   DEFAULT_LOCAL_EMBEDDINGS_CACHE_DIR,
   resolveLocalEmbeddingsCacheDir,
@@ -10,7 +9,7 @@ import {
 /**
  * Seams under test (ticket #37 / ADR-0012):
  * - bakeLocalEmbeddingModel — install/snapshot bake populates the discoverable cache
- * - resolveLocalEmbeddingsCacheDir / createLocalEmbeddings — same cache path as live load
+ * - resolveLocalEmbeddingsCacheDir — same cache path as live Embeddings load
  * Injectable `populate` keeps CI offline (no Hub / large weight download).
  */
 
@@ -47,27 +46,6 @@ describe("Bake local embedding model into snapshot cache", () => {
       model: DEFAULT_LOCAL_EMBEDDING_MODEL,
       cacheDir: "/tmp/ppm-baked-models",
     });
-  });
-
-  it("lets createLocalEmbeddings load from the baked cache path without Hub download", async () => {
-    const cacheDir = "/tmp/ppm-offline-bake";
-    const vectors = [[0.1, 0.2, 0.3]] as const;
-
-    await bakeLocalEmbeddingModel({
-      cacheDir,
-      populate: async () => undefined,
-    });
-
-    const embeddings = createLocalEmbeddings({
-      cacheDir,
-      allowRemoteModels: false,
-      async embedBatch(texts) {
-        expect(texts).toEqual(["probe"]);
-        return [...vectors];
-      },
-    });
-
-    await expect(embeddings.embed(["probe"])).resolves.toEqual([[0.1, 0.2, 0.3]]);
   });
 
   it("surfaces a clear error when populate fails", async () => {

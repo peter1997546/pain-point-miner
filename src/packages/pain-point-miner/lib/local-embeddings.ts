@@ -105,18 +105,28 @@ async function loadLocalExtractor(
     return init.loadExtractor();
   }
 
-  const model = init.model ?? DEFAULT_LOCAL_EMBEDDING_MODEL;
-  const cacheDir = resolve(
-    resolveLocalEmbeddingsCacheDir(init.cacheDir, init.env ?? process.env),
-  );
-  const allowRemoteModels = init.allowRemoteModels ?? true;
+  return loadTransformersFeatureExtractor({
+    model: init.model ?? DEFAULT_LOCAL_EMBEDDING_MODEL,
+    cacheDir: resolveLocalEmbeddingsCacheDir(init.cacheDir, init.env ?? process.env),
+    allowRemoteModels: init.allowRemoteModels ?? true,
+  });
+}
 
+/**
+ * Shared Transformers.js feature-extraction load for live Embeddings and
+ * snapshot bake (same cacheDir / model contract).
+ */
+export async function loadTransformersFeatureExtractor(options: {
+  model: string;
+  cacheDir: string;
+  allowRemoteModels: boolean;
+}): Promise<LocalEmbeddingExtractor> {
   const { pipeline, env } = await import("@huggingface/transformers");
-  env.cacheDir = cacheDir;
+  env.cacheDir = resolve(options.cacheDir);
   env.allowLocalModels = true;
-  env.allowRemoteModels = allowRemoteModels;
+  env.allowRemoteModels = options.allowRemoteModels;
 
-  const extractor = await pipeline("feature-extraction", model);
+  const extractor = await pipeline("feature-extraction", options.model);
   return extractor as LocalEmbeddingExtractor;
 }
 

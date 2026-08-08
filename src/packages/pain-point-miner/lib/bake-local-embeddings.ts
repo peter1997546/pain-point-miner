@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   DEFAULT_LOCAL_EMBEDDING_MODEL,
+  loadTransformersFeatureExtractor,
   resolveLocalEmbeddingsCacheDir,
 } from "./local-embeddings.js";
 
@@ -67,10 +68,9 @@ async function defaultPopulateLocalEmbeddingModel(args: {
   model: string;
   cacheDir: string;
 }): Promise<void> {
-  const absoluteCacheDir = resolve(args.cacheDir);
-  const { pipeline, env } = await import("@huggingface/transformers");
-  env.cacheDir = absoluteCacheDir;
-  env.allowLocalModels = true;
-  env.allowRemoteModels = true;
-  await pipeline("feature-extraction", args.model);
+  await loadTransformersFeatureExtractor({
+    model: args.model,
+    cacheDir: args.cacheDir,
+    allowRemoteModels: true,
+  });
 }
