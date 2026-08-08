@@ -1,8 +1,12 @@
+import { applyCompetitionFilter } from "./competition-filter.js";
 import { clusterEvidence } from "./cluster-evidence.js";
 import type {
+  AnalysisOutcome,
+  Brief,
   CandidateCluster,
   EvidenceRef,
   FollowOnTarget,
+  HollowRejection,
   Intent,
   MentionedApp,
   PainPointMiner,
@@ -210,12 +214,44 @@ export function createPainPointMiner(
         }
       }
 
+      const gatedClusters = gatedClustersOf(state.candidateClusters);
+      const analysisOutcomes: AnalysisOutcome[] = [];
+      const briefs: Brief[] = [];
+      const hollowRejections: HollowRejection[] = [];
+
+      // Per-cluster Analysis Pass (ADR-0011) — one gated cluster per call.
+      if (deps.analysisPass) {
+        for (const cluster of gatedClusters) {
+          const outcome = await deps.analysisPass.analyze({
+            cluster,
+            intent,
+          });
+          analysisOutcomes.push(outcome);
+          if (outcome.status === "hollow") {
+            const { status: _status, ...rejection } = outcome;
+            hollowRejections.push(rejection);
+          } else {
+            briefs.push(outcome.brief);
+          }
+        }
+      }
+
+      const { visible, hidden } = applyCompetitionFilter(
+        briefs,
+        input.competitionFilterThreshold,
+      );
+
       return {
         intent,
         evidence: state.evidence,
         candidateClusters: state.candidateClusters,
-        gatedClusters: gatedClustersOf(state.candidateClusters),
+        gatedClusters,
         saturationStopped: state.saturationStopped,
+        analysisOutcomes,
+        briefs,
+        hollowRejections,
+        visibleBriefs: visible,
+        hiddenByCompetitionFilter: hidden,
       };
     },
   };

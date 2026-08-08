@@ -20,9 +20,9 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Signal Source, embedding, Follow-on Fetch, and Store Second Pass adapters are injectable behind that seam (fixtures for tests / local inspection; live network adapters come later).
+`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles for tests; live network / LLM adapters come later).
 
-Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop. Deepened Evidence feeds the same clustering and gates.
+Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
 
 ### Defaults
 
@@ -31,11 +31,14 @@ Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand 
 | `run()` / `run({})` / omitted `intent` | Empty Intent `{}` |
 | Count Gate | Evidence Count ≥ **5** |
 | Saturation Stop | Halt once **20** Count-Gated clusters exist |
-| Follow-on / Store Second Pass | Skipped when those ports are omitted |
+| Follow-on / Store Second Pass / Analysis Pass | Skipped when those ports are omitted |
+| Competition Filter threshold | Omitted — all annotated Briefs stay visible (no silent hard-kill) |
 | Script CLI Signal Sources / Embeddings / Follow-on / Store | Built-in fixtures (no live network / LLM) |
 | Script CLI `--format` | `markdown` |
 
-`RunArtifact` exposes quotable Evidence references, Candidate Clusters (with Evidence Count), and which clusters passed the Count Gate. The raw scrape corpus is not part of the public contract.
+`RunArtifact` exposes quotable Evidence references, Candidate Clusters (with Evidence Count + Signal Mix hints), gated clusters, Analysis outcomes (Hollow rejections + Pain Point Briefs), and a Competition Filter view (`visibleBriefs` / `hiddenByCompetitionFilter`) that never deletes the full annotated `briefs` set. The raw scrape corpus is not part of the public contract.
+
+`applyCompetitionFilter(briefs, threshold?)` is also exported for post-hoc hide/show over an already-emitted Brief set.
 
 ## Script CLI
 

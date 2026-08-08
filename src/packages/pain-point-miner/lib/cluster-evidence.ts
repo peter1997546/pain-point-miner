@@ -1,4 +1,5 @@
 import { cosineSimilarity } from "./cosine.js";
+import { signalMixFromEvidence } from "./signal-mix.js";
 import type { CandidateCluster, EvidenceRef } from "./types.js";
 
 class UnionFind {
@@ -90,6 +91,7 @@ export function clusterEvidence(
       evidence: members,
       evidenceCount,
       passedCountGate: evidenceCount >= options.countGateThreshold,
+      signalMix: signalMixFromEvidence(members),
     };
   });
 }

@@ -16,6 +16,12 @@ describe("PainPointMiner.run", () => {
     expect(artifact.candidateClusters.length).toBeGreaterThan(0);
     expect(artifact.gatedClusters).toEqual([]);
     expect(artifact.saturationStopped).toBe(false);
+    // Analysis Pass omitted — no Briefs / Hollow judgments; filter view empty.
+    expect(artifact.analysisOutcomes).toEqual([]);
+    expect(artifact.briefs).toEqual([]);
+    expect(artifact.hollowRejections).toEqual([]);
+    expect(artifact.visibleBriefs).toEqual([]);
+    expect(artifact.hiddenByCompetitionFilter).toEqual([]);
     for (const item of artifact.evidence) {
       expect(item.quote.length).toBeGreaterThan(0);
       expect(item.url).toMatch(/^https?:\/\//);
