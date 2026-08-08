@@ -28,7 +28,11 @@ Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand 
 
 Live cold-start adapters implement the same `SignalSource` port used by `run` (ADR-0010). They cover primary Reddit boards × demand query patterns and Ask HN–style HN searches. Product Hunt, Indie Hackers, and large founder boards (e.g. `r/Entrepreneur`) are **not** part of this wave.
 
-CI uses injectable `JsonHttpClient` recordings — no live network required. For a manual live crawl:
+### Store Second Pass + Follow-on adapters
+
+App Store / Play implement `StoreReviewSource` (reviews only for apps mentioned in forum Evidence). Product Hunt / Indie Hackers implement `FollowOnFetcher` for referenced URLs — not cold-start firehoses (ADR-0007 / ADR-0010).
+
+CI uses injectable `AdapterHttpClient` / `JsonHttpClient` recordings — no live network required. For a manual live crawl:
 
 ```ts
 import {
@@ -36,19 +40,26 @@ import {
   createFixtureEmbeddings,
   createEntryCatalogSignalSources,
   createFetchHttpClient,
+  createSourceCatalogFollowOnFetcher,
+  createStoreReviewSource,
 } from "pain-point-miner";
 
+const http = createFetchHttpClient();
+
 const miner = createPainPointMiner({
-  signalSources: createEntryCatalogSignalSources({
-    http: createFetchHttpClient(),
-  }),
+  signalSources: createEntryCatalogSignalSources({ http }),
   embeddings: createFixtureEmbeddings(),
+  followOnFetcher: createSourceCatalogFollowOnFetcher({
+    http,
+    productHuntAccessToken: process.env.PRODUCT_HUNT_TOKEN,
+  }),
+  storeReviewSource: createStoreReviewSource({ http }),
 });
 
 const artifact = await miner.run({});
 ```
 
-Script CLI still defaults to built-in fixtures so local/CI inspection stays offline.
+Script CLI still defaults to built-in fixtures so local/CI inspection stays offline. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH deepenings.
 
 ### Defaults
 
