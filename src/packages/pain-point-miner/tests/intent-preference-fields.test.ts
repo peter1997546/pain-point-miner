@@ -178,19 +178,6 @@ describe("PainPointMiner.run — optional Intent preference fields", () => {
 
     expect(analysisPass.calls).toHaveLength(1);
     expect(analysisPass.calls[0]?.intent).toEqual(FILLED_INTENT);
-    expect(analysisPass.calls[0]?.intent.theme).toBe("AI automation");
-    expect(analysisPass.calls[0]?.intent.productShape).toBe(
-      "solo-dev SaaS with a thin UI",
-    );
-    expect(analysisPass.calls[0]?.intent.constraints).toBe(
-      "nights and weekends only; no paid ads",
-    );
-    expect(analysisPass.calls[0]?.intent.hardNos).toBe(
-      "no marketplace, no crypto",
-    );
-    expect(analysisPass.calls[0]?.intent.successDefinition).toBe(
-      "first paying customer within 90 days",
-    );
   });
 
   it("does not invent Follow-on crawl targets from filled Intent preference fields", async () => {
