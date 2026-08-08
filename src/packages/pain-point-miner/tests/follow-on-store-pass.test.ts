@@ -287,4 +287,193 @@ describe("PainPointMiner.run — Follow-on Fetch and Store Second Pass", () => {
 
     expect(requestedApps).toEqual([]);
   });
+
+  it("fetches Demand Signal pages before alternative/review when both deepen", async () => {
+    const seed = evidence({
+      id: "seed-order",
+      quote: "Need invoice chase; also reading QuickBooks alternative lists",
+      followOnTargets: [
+        {
+          url: "https://example.com/best-alternatives-to-quickbooks",
+          kind: "alternative-review",
+        },
+        {
+          url: "https://reddit.com/r/freelance/comments/demand-wish",
+          kind: "demand-signal",
+        },
+      ],
+    });
+    const demandDeep = evidence({
+      id: "deep-demand-order",
+      quote: "Demand page about missing dunning tool",
+      url: "https://reddit.com/r/freelance/comments/demand-wish",
+    });
+    const altDeep = evidence({
+      id: "deep-alt-order",
+      quote: "Alternative roundup page",
+      url: "https://example.com/best-alternatives-to-quickbooks",
+      signalSource: "product-hunt",
+    });
+
+    const fetchedUrls: string[] = [];
+    const followOnFetcher: FollowOnFetcher = {
+      async fetchPage(url) {
+        fetchedUrls.push(url);
+        if (url === demandDeep.url) {
+          return [demandDeep];
+        }
+        if (url === altDeep.url) {
+          return [altDeep];
+        }
+        return [];
+      },
+    };
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [seed])],
+      embeddings: embeddingsByQuote({
+        [seed.quote]: INVOICE_VEC,
+        [demandDeep.quote]: DEMAND_PAGE_VEC,
+        [altDeep.quote]: ALT_PAGE_VEC,
+      }),
+      followOnFetcher,
+    });
+
+    const artifact = await miner.run({});
+
+    expect(fetchedUrls).toEqual([demandDeep.url, altDeep.url]);
+    expect(artifact.evidence.map((item) => item.id)).toEqual([
+      "seed-order",
+      "deep-demand-order",
+      "deep-alt-order",
+    ]);
+  });
+
+  it("pursues Follow-on targets discovered on deepened pages during the run", async () => {
+    const seed = evidence({
+      id: "seed-nested",
+      quote: "Thread pointing at a demand Ask HN",
+      followOnTargets: [
+        {
+          url: "https://news.ycombinator.com/item?id=outer",
+          kind: "demand-signal",
+        },
+      ],
+    });
+    const outer = evidence({
+      id: "outer-page",
+      quote: "Ask HN outer thread that links a concrete wish post",
+      url: "https://news.ycombinator.com/item?id=outer",
+      signalSource: "hacker-news",
+      followOnTargets: [
+        {
+          url: "https://reddit.com/r/smallbusiness/comments/inner-wish",
+          kind: "demand-signal",
+        },
+      ],
+    });
+    const inner = evidence({
+      id: "inner-page",
+      quote: "Concrete wish for inventory without spreadsheets",
+      url: "https://reddit.com/r/smallbusiness/comments/inner-wish",
+    });
+
+    const fetchedUrls: string[] = [];
+    const followOnFetcher: FollowOnFetcher = {
+      async fetchPage(url) {
+        fetchedUrls.push(url);
+        if (url === outer.url) {
+          return [outer];
+        }
+        if (url === inner.url) {
+          return [inner];
+        }
+        return [];
+      },
+    };
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [seed])],
+      embeddings: embeddingsByQuote({
+        [seed.quote]: INVOICE_VEC,
+        [outer.quote]: DEMAND_PAGE_VEC,
+        [inner.quote]: ALT_PAGE_VEC,
+      }),
+      followOnFetcher,
+    });
+
+    const artifact = await miner.run({});
+
+    expect(fetchedUrls).toEqual([outer.url, inner.url]);
+    expect(artifact.evidence.map((item) => item.id)).toEqual([
+      "seed-nested",
+      "outer-page",
+      "inner-page",
+    ]);
+  });
+
+  it("Store Second Pass uses apps mentioned on Follow-on forum Evidence", async () => {
+    const seed = evidence({
+      id: "seed-to-mention",
+      quote: "Linking a freelance thread about Wave reminders",
+      followOnTargets: [
+        {
+          url: "https://reddit.com/r/freelance/comments/wave-thread",
+          kind: "demand-signal",
+        },
+      ],
+    });
+    const deepenedForum = evidence({
+      id: "deep-wave-mention",
+      quote: "Wave keeps dropping invoice reminders for freelancers",
+      url: "https://reddit.com/r/freelance/comments/wave-thread",
+      structuralKey: "wave-reminders",
+      mentionedApps: [{ id: "wave-accounting", store: "app-store" }],
+    });
+    const storeReview = evidence({
+      id: "store-from-follow-on",
+      quote: "App Store: Wave reminders never fire",
+      url: "https://apps.apple.com/app/wave/id1001",
+      signalSource: "app-store",
+      structuralKey: "wave-reminders",
+    });
+
+    const requestedApps: MentionedApp[] = [];
+    const followOnFetcher: FollowOnFetcher = {
+      async fetchPage(url) {
+        return url === deepenedForum.url ? [deepenedForum] : [];
+      },
+    };
+    const storeReviewSource: StoreReviewSource = {
+      async fetchReviews(app) {
+        requestedApps.push(app);
+        if (app.id === "wave-accounting") {
+          return [storeReview];
+        }
+        return [];
+      },
+    };
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("reddit", [seed])],
+      embeddings: embeddingsByQuote({
+        [seed.quote]: INVOICE_VEC,
+        [deepenedForum.quote]: DEMAND_PAGE_VEC,
+        [storeReview.quote]: STORE_VEC,
+      }),
+      followOnFetcher,
+      storeReviewSource,
+    });
+
+    const artifact = await miner.run({});
+
+    expect(requestedApps).toEqual([
+      { id: "wave-accounting", store: "app-store" },
+    ]);
+    expect(artifact.evidence.map((item) => item.id)).toEqual([
+      "seed-to-mention",
+      "deep-wave-mention",
+      "store-from-follow-on",
+    ]);
+  });
 });

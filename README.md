@@ -32,7 +32,7 @@ Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand 
 | Count Gate | Evidence Count ≥ **5** |
 | Saturation Stop | Halt once **20** Count-Gated clusters exist |
 | Follow-on / Store Second Pass | Skipped when those ports are omitted |
-| Script CLI Signal Sources / Embeddings | Built-in fixtures (no live network / LLM) |
+| Script CLI Signal Sources / Embeddings / Follow-on / Store | Built-in fixtures (no live network / LLM) |
 | Script CLI `--format` | `markdown` |
 
 `RunArtifact` exposes quotable Evidence references, Candidate Clusters (with Evidence Count), and which clusters passed the Count Gate. The raw scrape corpus is not part of the public contract.

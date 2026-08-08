@@ -4,13 +4,16 @@ import type {
   MentionedApp,
   StoreReviewSource,
 } from "./types.js";
+import { mentionedAppKey } from "./types.js";
 
 /**
  * Fixture Follow-on Fetcher keyed by page URL (no live network).
  * Unknown URLs return an empty batch.
  */
 export function createFixtureFollowOnFetcher(
-  pages: ReadonlyMap<string, readonly EvidenceRef[]> | Record<string, readonly EvidenceRef[]>,
+  pages:
+    | ReadonlyMap<string, readonly EvidenceRef[]>
+    | Record<string, readonly EvidenceRef[]>,
 ): FollowOnFetcher {
   const byUrl =
     pages instanceof Map ? pages : new Map(Object.entries(pages));
@@ -19,10 +22,6 @@ export function createFixtureFollowOnFetcher(
       return byUrl.get(url) ?? [];
     },
   };
-}
-
-function appKey(app: MentionedApp): string {
-  return `${app.store}:${app.id}`;
 }
 
 /**
@@ -40,7 +39,7 @@ export function createFixtureStoreReviewSource(
       : new Map(Object.entries(reviewsByApp));
   return {
     async fetchReviews(app: MentionedApp) {
-      return byKey.get(appKey(app)) ?? [];
+      return byKey.get(mentionedAppKey(app)) ?? [];
     },
   };
 }

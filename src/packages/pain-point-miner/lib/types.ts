@@ -135,6 +135,11 @@ export const FORUM_SIGNAL_SOURCES: ReadonlySet<string> = new Set([
   "indie-hackers",
 ]);
 
+/** Stable key for a mentioned app across planning and store fixtures. */
+export function mentionedAppKey(app: MentionedApp): string {
+  return `${app.store}:${app.id}`;
+}
+
 export type PainPointMiner = {
   run(input?: RunInput): Promise<RunArtifact>;
 };

@@ -16,6 +16,7 @@ import {
   DEFAULT_SATURATION_STOP_K,
   DEFAULT_STRUCTURAL_KEY_SIMILARITY_THRESHOLD,
   FORUM_SIGNAL_SOURCES,
+  mentionedAppKey,
 } from "./types.js";
 
 const EMPTY_INTENT: Intent = {};
@@ -99,7 +100,7 @@ function planMentionedApps(evidence: readonly EvidenceRef[]): MentionedApp[] {
       continue;
     }
     for (const app of item.mentionedApps ?? []) {
-      const key = `${app.store}:${app.id}`;
+      const key = mentionedAppKey(app);
       if (!byKey.has(key)) {
         byKey.set(key, app);
       }
@@ -170,10 +171,18 @@ export function createPainPointMiner(
         }
       }
 
-      if (deps.followOnFetcher && !state.saturationStopped) {
-        const targets = planFollowOnTargets(state.evidence);
-        for (const target of targets) {
-          const batch = await deps.followOnFetcher.fetchPage(target.url);
+      // Re-plan after each deepen so pages discovered mid-run are pursued.
+      if (deps.followOnFetcher) {
+        const fetchedUrls = new Set<string>();
+        while (!state.saturationStopped) {
+          const next = planFollowOnTargets(state.evidence).find(
+            (target) => !fetchedUrls.has(target.url),
+          );
+          if (!next) {
+            break;
+          }
+          fetchedUrls.add(next.url);
+          const batch = await deps.followOnFetcher.fetchPage(next.url);
           await ingestBatch(
             state,
             batch,
@@ -181,9 +190,6 @@ export function createPainPointMiner(
             countGateThreshold,
             saturationStopK,
           );
-          if (state.saturationStopped) {
-            break;
-          }
         }
       }
 
