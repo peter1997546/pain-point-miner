@@ -10,6 +10,11 @@ export {
   type LocalEmbeddingsInit,
 } from "./lib/local-embeddings.js";
 export {
+  bakeLocalEmbeddingModel,
+  type BakeLocalEmbeddingModelInit,
+  type BakeLocalEmbeddingModelResult,
+} from "./lib/bake-local-embeddings.js";
+export {
   createOpenAiCompatibleEmbeddings,
   type OpenAiCompatibleEmbeddingsInit,
 } from "./lib/openai-compatible-embeddings.js";

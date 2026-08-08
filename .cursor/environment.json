@@ -1,0 +1,4 @@
+{
+  "name": "pain-point-miner",
+  "install": "npm ci && npm run bake:local-embeddings"
+}
