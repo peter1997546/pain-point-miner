@@ -17,6 +17,12 @@ export {
   formatRunArtifact,
   type ArtifactFormat,
 } from "./lib/format-run-artifact.js";
+export {
+  createSkillOrchestrator,
+  createSkillOrchestratorFromMiner,
+  type SkillOrchestrator,
+  type SkillOrchestratorDeps,
+} from "./lib/skill-orchestrator.js";
 export type {
   AnalysisOutcome,
   AnalysisPass,

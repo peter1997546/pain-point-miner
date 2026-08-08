@@ -20,9 +20,9 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles for tests; live network / LLM adapters come later).
+`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles for tests; live network / LLM adapters come later).
 
-Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
+Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → optional **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
 
 ### Defaults
 
@@ -42,10 +42,44 @@ Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand 
 
 ## Script CLI
 
+The Script mines and gates only (no Analysis Pass). Use it for condensed gated candidates the Skill will analyze:
+
 ```bash
 npm install
 npm run cli -- --format markdown
 npm run cli -- --format json --out artifact.json
+```
+
+## Skill (Script + per-cluster fan-out)
+
+Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-point-miner/SKILL.md) (ADR-0009 / ADR-0011).
+
+1. Call the Script / `run` mining path (never crawl-in-chat).
+2. Fan out Analysis Pass **one gated Candidate Cluster at a time** (parallel agents OK); each step sees only that cluster’s Evidence plus Brief context — never the full scrape.
+3. Assemble Briefs / Hollow rejections; optional Competition Filter after emission.
+
+Programmatic adapter:
+
+```ts
+import {
+  createPainPointMiner,
+  createSkillOrchestrator,
+  createFixtureEmbeddings,
+  createFixtureSignalSources,
+} from "pain-point-miner";
+
+const scriptMiner = createPainPointMiner({
+  signalSources: createFixtureSignalSources(),
+  embeddings: createFixtureEmbeddings(),
+  // omit analysisPass — Skill owns fan-out
+});
+
+const skill = createSkillOrchestrator({
+  runMining: (input) => scriptMiner.run(input),
+  analysisPass, // test double or live LLM
+});
+
+const artifact = await skill.run({});
 ```
 
 ## Checks
