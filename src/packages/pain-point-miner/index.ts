@@ -58,6 +58,11 @@ export {
   type ArtifactFormat,
 } from "./lib/format-run-artifact.js";
 export {
+  formatRunReport,
+  type FormatRunReportInput,
+  type RunReportMeta,
+} from "./lib/format-run-report.js";
+export {
   createSkillOrchestrator,
   type SkillOrchestrator,
   type SkillOrchestratorDeps,
