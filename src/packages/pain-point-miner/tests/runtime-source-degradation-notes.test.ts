@@ -4,6 +4,7 @@
  *   Signal Source / Follow-on / Store Second Pass runtime degradation notes
  * - toSkillMiningHandoff merges runtime notes with token-gated skip notes
  *   (liveSourceDegradationNotes) without overwriting either set
+ * - assembleRunReport surfaces those merged notes in the Run Report
  * - CLI `--live --handoff skill` carries the merged notes on the Skill handoff
  *
  * Adapter-internal silent empties (single URL inside a healthy adapter) are
@@ -15,6 +16,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "../cli.js";
 import {
+  assembleRunReport,
   createFixtureEmbeddings,
   createPainPointMiner,
   liveSourceDegradationNotes,
@@ -236,6 +238,41 @@ describe("Skill handoff merges runtime + token-gated degradation notes", () => {
       'Signal Source "reddit" degraded: simulated Signal Source outage',
       "Store Second Pass degraded for app-store:wave-accounting: timeout",
     ]);
+  });
+
+  it("Run Report includes merged runtime + token-gated notes from the handoff", () => {
+    const handoff = toSkillMiningHandoff(
+      {
+        intent: { theme: "AI automation" },
+        evidence: [],
+        candidateClusters: [],
+        gatedClusters: [],
+        saturationStopped: false,
+        analysisOutcomes: [],
+        briefs: [],
+        hollowRejections: [],
+        visibleBriefs: [],
+        hiddenByCompetitionFilter: [],
+        sourceDegradationNotes: [
+          'Signal Source "reddit" degraded: simulated Signal Source outage',
+        ],
+      },
+      {
+        sourceDegradationNotes: liveSourceDegradationNotes({}),
+      },
+    );
+
+    const markdown = assembleRunReport({
+      handoff,
+      analysisOutcomes: [],
+      runId: ".pain-point-miner/runs/2026-08-08T19-12-00Z",
+    });
+
+    expect(markdown).toContain("## Source notes");
+    expect(markdown).toContain(PRODUCT_HUNT_FOLLOW_ON_SKIPPED_NOTE);
+    expect(markdown).toContain(
+      'Signal Source "reddit" degraded: simulated Signal Source outage',
+    );
   });
 
   it("CLI --live --handoff skill merges PH skip notes with runtime Signal Source notes", async () => {

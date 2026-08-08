@@ -131,15 +131,5 @@ export function formatRunArtifact(
     }
   }
 
-  lines.push("## Source notes", "");
-  if (artifact.sourceDegradationNotes.length === 0) {
-    lines.push("_No source degradations noted._", "");
-  } else {
-    for (const note of artifact.sourceDegradationNotes) {
-      lines.push(`- ${note}`);
-    }
-    lines.push("");
-  }
-
   return `${lines.join("\n")}\n`;
 }
