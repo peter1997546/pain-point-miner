@@ -99,11 +99,11 @@ _Avoid_: Treating Reddit or Product Hunt as mandatory for real usage, G2/Capterr
 **Entry Catalog** (v1):
 Cold-start before Follow-on Fetch — **free, no-token, Cloud-reachable** sources only:
 - Hacker News: Ask HN–style frustration / wish searches (Algolia)
-- Lobsters: demand-relevant listings (e.g. ask / rant / newest-style JSON listings)
-- Lemmy: public instance search for Demand-oriented queries
-- Dev.to: tag-based article listings (e.g. discuss / help)
-- Discourse: search on a **finite verified whitelist** of forum instances (not an open-ended crawl of all Discourse sites)
-Reddit is not the primary cold-start when it is blocked or credential-gated; Product Hunt & Indie Hackers are not primary Entry.
+- Lobsters: demand-relevant listings (ask / rant / newest-style JSON)
+- Lemmy: **lemmy.world** API search with Demand-oriented queries
+- Dev.to: tag-based article listings (discuss / help)
+- Discourse (finite verified hosts only): `meta.discourse.org`, `forum.cursor.com`, `forum.gitlab.com`, `community.openai.com`, `discuss.huggingface.co`
+Channels that cannot be used normally without tokens or that fail on Cloud (e.g. Reddit public JSON, Product Hunt without token) are skipped for the default live path — not mandatory.
 _Avoid_: Hot-only firehose, Reddit-as-mandatory primary, PH/IH as main demand entry, inventing crawl targets from Intent, unbounded “every Discourse on the internet”
 
 **Signal Source**:
@@ -111,11 +111,11 @@ One channel from the Source Catalog mined for Evidence.
 _Avoid_: Corpus, scrape target (implementation wording)
 
 **Follow-on Fetch**:
-When material points at a *specific* demand-relevant page or thread, or names a product/app worth a Store Second Pass, fetch it next. Prefer Demand Signal pages over generic “best alternative / review” pages when choosing what to deepen.
+When material points at a *specific* demand-relevant page or thread, or names a product/app worth a Store Second Pass, fetch it next. Prefer Demand Signal pages over generic “best alternative / review” pages when choosing what to deepen. Skip Follow-on targets that are not normally usable without tokens.
 _Avoid_: Intent-biased source picking, treating every “alternative to X” link as a Demand Signal
 
 **Store Second Pass**:
-Apple App Store reviews for apps *mentioned* in forum-style Evidence — secondary, often Incumbent Friction, used to enrich not to define demand. Play Store for this catalog revision remains undecided.
+Apple App Store reviews for apps *mentioned* in forum-style Evidence — secondary, often Incumbent Friction, used to enrich not to define demand. Skip store backends that are not normally usable (e.g. fragile Play paths) on the default live path.
 _Avoid_: Seed app list as the primary store strategy, using store reviews as the primary cold-start for Demand Signal
 
 **Brief**:
