@@ -16,6 +16,7 @@ import {
   assembleRunReport,
   createSkillRunFolderPath,
   liveSourceDegradationNotes,
+  prepareSkillRunFolder,
   toSkillMiningHandoff,
   writeSkillRunFolder,
   type AnalysisOutcome,
@@ -24,6 +25,7 @@ import {
   type EvidenceRef,
   type SkillMiningHandoff,
 } from "../index.js";
+import { access } from "node:fs/promises";
 
 const tempDirs: string[] = [];
 
@@ -121,6 +123,17 @@ describe("Skill run folder — handoff + Run Report via formatter", () => {
       now: new Date("2026-08-08T19:12:00.000Z"),
     });
     expect(path).toBe(".pain-point-miner/runs/2026-08-08T19-12-00Z");
+  });
+
+  it("prepareSkillRunFolder creates the time-based directory on disk", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ppm-skill-prepare-"));
+    tempDirs.push(root);
+    const runDir = await prepareSkillRunFolder({
+      runsRoot: root,
+      now: new Date("2026-08-08T19:12:00.000Z"),
+    });
+    expect(runDir).toBe(join(root, "2026-08-08T19-12-00Z"));
+    await expect(access(runDir)).resolves.toBeUndefined();
   });
 
   it("assembles Run Report Markdown from Analysis outcomes without re-judging or inventing Evidence", () => {
@@ -237,35 +250,12 @@ describe("Skill handoff carries live source degradation notes", () => {
   it("CLI --live --handoff skill records PH skip notes when token unset", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ppm-cli-live-handoff-"));
     tempDirs.push(dir);
-    const outPath = join(dir, "handoff.json");
+    // Nested run-folder path — CLI must create parents (ENOENT otherwise).
+    const outPath = join(dir, "2026-08-08T19-12-00Z", "handoff.json");
 
     const code = await runCli(
       ["--live", "--format", "json", "--handoff", "skill", "--out", outPath],
-      {
-        env: {},
-        embeddings: {
-          async embed(texts) {
-            return texts.map(() => [1, 0, 0]);
-          },
-        },
-        signalSources: [
-          {
-            name: "reddit",
-            async collect() {
-              return [
-                evidence({
-                  id: "r-1",
-                  quote: "Need a tool for late invoice chase",
-                  signalKind: "demand-signal",
-                }),
-              ];
-            },
-          },
-        ],
-        followOnFetcher: { async fetchPage() { return []; } },
-        storeReviewSource: { async fetchReviews() { return []; } },
-        stdout: { write() {} },
-      },
+      liveHandoffCliIo({ env: {} }),
     );
 
     expect(code).toBe(0);
@@ -286,32 +276,10 @@ describe("Skill handoff carries live source degradation notes", () => {
 
     const code = await runCli(
       ["--live", "--format", "json", "--handoff", "skill", "--out", outPath],
-      {
+      liveHandoffCliIo({
         env: { PRODUCT_HUNT_TOKEN: "ph_present" },
         liveDiscovery: { productHuntAccessToken: "ph_present" },
-        embeddings: {
-          async embed(texts) {
-            return texts.map(() => [1, 0, 0]);
-          },
-        },
-        signalSources: [
-          {
-            name: "reddit",
-            async collect() {
-              return [
-                evidence({
-                  id: "r-1",
-                  quote: "Need a tool for late invoice chase",
-                  signalKind: "demand-signal",
-                }),
-              ];
-            },
-          },
-        ],
-        followOnFetcher: { async fetchPage() { return []; } },
-        storeReviewSource: { async fetchReviews() { return []; } },
-        stdout: { write() {} },
-      },
+      }),
     );
 
     expect(code).toBe(0);
@@ -323,3 +291,37 @@ describe("Skill handoff carries live source degradation notes", () => {
     );
   });
 });
+
+function liveHandoffCliIo(overrides: {
+  env: NodeJS.ProcessEnv;
+  liveDiscovery?: { productHuntAccessToken?: string };
+}) {
+  return {
+    env: overrides.env,
+    ...(overrides.liveDiscovery !== undefined
+      ? { liveDiscovery: overrides.liveDiscovery }
+      : {}),
+    embeddings: {
+      async embed(texts: readonly string[]) {
+        return texts.map(() => [1, 0, 0]);
+      },
+    },
+    signalSources: [
+      {
+        name: "reddit",
+        async collect() {
+          return [
+            evidence({
+              id: "r-1",
+              quote: "Need a tool for late invoice chase",
+              signalKind: "demand-signal" as const,
+            }),
+          ];
+        },
+      },
+    ],
+    followOnFetcher: { async fetchPage() { return []; } },
+    storeReviewSource: { async fetchReviews() { return []; } },
+    stdout: { write() {} },
+  };
+}

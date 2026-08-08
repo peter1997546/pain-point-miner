@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { formatRunReport } from "./format-run-report.js";
 import { partitionAnalysisOutcomes } from "./partition-analysis-outcomes.js";
 import type { SkillMiningHandoff } from "./skill-mining-handoff.js";
@@ -16,6 +16,7 @@ export type CreateSkillRunFolderPathOptions = {
 
 /**
  * Time-based Skill run folder path (e.g. `.pain-point-miner/runs/2026-08-08T19-12-00Z`).
+ * Path only — use `prepareSkillRunFolder` when the directory must exist on disk.
  */
 export function createSkillRunFolderPath(
   options: CreateSkillRunFolderPathOptions = {},
@@ -29,29 +30,36 @@ export function createSkillRunFolderPath(
   return `${root.replace(/\/$/, "")}/${stamp}`;
 }
 
+/**
+ * Create the time-based run folder on disk and return its path.
+ */
+export async function prepareSkillRunFolder(
+  options: CreateSkillRunFolderPathOptions = {},
+): Promise<string> {
+  const runDir = createSkillRunFolderPath(options);
+  await mkdir(runDir, { recursive: true });
+  return runDir;
+}
+
 export type AssembleRunReportInput = {
   handoff: SkillMiningHandoff;
   analysisOutcomes: readonly AnalysisOutcome[];
   /** Run folder identity shown in the report (usually the runDir path). */
   runId: string;
-  /**
-   * Override degradation notes. When omitted, uses `handoff.sourceDegradationNotes`.
-   */
-  sourceDegradationNotes?: readonly string[];
 };
 
 /**
  * Report Agent seam: partition Analysis outcomes and format the Run Report
  * skeleton (ADR-0015). Does not re-judge Hollow vs Brief or invent Evidence —
  * quotes come only from handoff gated-cluster Evidence matching Brief links.
+ * Source notes come from `handoff.sourceDegradationNotes`.
  */
 export function assembleRunReport(input: AssembleRunReportInput): string {
   const { briefs, hollowRejections } = partitionAnalysisOutcomes(
     input.analysisOutcomes,
   );
   const evidence = evidenceFromHandoff(input.handoff);
-  const notes =
-    input.sourceDegradationNotes ?? input.handoff.sourceDegradationNotes;
+  const notes = input.handoff.sourceDegradationNotes;
 
   return formatRunReport({
     briefs,
@@ -70,7 +78,6 @@ export type WriteSkillRunFolderInput = {
   runDir: string;
   handoff: SkillMiningHandoff;
   analysisOutcomes: readonly AnalysisOutcome[];
-  sourceDegradationNotes?: readonly string[];
 };
 
 export type WriteSkillRunFolderResult = {
@@ -94,9 +101,6 @@ export async function writeSkillRunFolder(
     handoff: input.handoff,
     analysisOutcomes: input.analysisOutcomes,
     runId: input.runDir,
-    ...(input.sourceDegradationNotes !== undefined
-      ? { sourceDegradationNotes: input.sourceDegradationNotes }
-      : {}),
   });
 
   await writeFile(
@@ -107,6 +111,11 @@ export async function writeSkillRunFolder(
   await writeFile(reportPath, reportMarkdown, "utf8");
 
   return { handoffPath, reportPath, reportMarkdown };
+}
+
+/** Ensure parent directories exist for a CLI `--out` path. */
+export async function ensureParentDir(filePath: string): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true });
 }
 
 function evidenceFromHandoff(

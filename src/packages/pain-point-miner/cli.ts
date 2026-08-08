@@ -7,6 +7,7 @@ import {
   createFixtureSignalSources,
   createLiveDiscoveryMiner,
   createPainPointMiner,
+  ensureParentDir,
   formatRunArtifact,
   liveSourceDegradationNotes,
   toSkillMiningHandoff,
@@ -338,6 +339,7 @@ export async function runCli(
       : formatRunArtifact(artifact, format);
 
     if (outPath) {
+      await ensureParentDir(outPath);
       await writeFile(outPath, rendered, "utf8");
     } else {
       stdout.write(rendered);

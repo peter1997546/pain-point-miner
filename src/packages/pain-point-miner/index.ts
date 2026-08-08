@@ -85,6 +85,8 @@ export {
 export {
   assembleRunReport,
   createSkillRunFolderPath,
+  ensureParentDir,
+  prepareSkillRunFolder,
   writeSkillRunFolder,
   DEFAULT_SKILL_RUNS_ROOT,
   type AssembleRunReportInput,

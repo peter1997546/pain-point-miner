@@ -39,7 +39,7 @@ Before mining, grill the Builder on **functional Intent** only — explain each 
 
 Do **not** interrogate Count Gate / Saturation Stop / Competition Filter / CLI plumbing unless the Builder volunteers overrides. Filled Intent must not whitelist or invent crawl targets (ADR-0004).
 
-Create a time-based run folder for this run with `createSkillRunFolderPath()` (e.g. `.pain-point-miner/runs/<timestamp>/`) and keep handoff + Run Report under it.
+Create a time-based run folder for this run with `prepareSkillRunFolder()` (creates `.pain-point-miner/runs/<timestamp>/` on disk) and keep handoff + Run Report under it.
 
 ### 1. Mine via Script (live)
 

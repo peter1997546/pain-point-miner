@@ -137,13 +137,13 @@ Programmatic Report Agent seam (tests / scripts):
 ```ts
 import {
   assembleRunReport,
-  createSkillRunFolderPath,
+  prepareSkillRunFolder,
   writeSkillRunFolder,
   type AnalysisOutcome,
   type SkillMiningHandoff,
 } from "pain-point-miner";
 
-const runDir = createSkillRunFolderPath();
+const runDir = await prepareSkillRunFolder();
 const reportMarkdown = assembleRunReport({
   handoff, // SkillMiningHandoff from --handoff skill
   analysisOutcomes, // from Cursor Analysis sub-agents
