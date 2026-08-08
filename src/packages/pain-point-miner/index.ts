@@ -2,6 +2,10 @@ export { applyCompetitionFilter } from "./lib/competition-filter.js";
 export { createPainPointMiner } from "./lib/create-pain-point-miner.js";
 export { createFixtureEmbeddings } from "./lib/fixture-embeddings.js";
 export {
+  createOpenAiCompatibleEmbeddings,
+  type OpenAiCompatibleEmbeddingsInit,
+} from "./lib/openai-compatible-embeddings.js";
+export {
   createFixtureFollowOnFetcher,
   createFixtureStoreReviewSource,
 } from "./lib/fixture-follow-on-store.js";

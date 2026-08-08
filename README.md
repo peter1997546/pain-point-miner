@@ -20,7 +20,7 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles / scripted `LlmClient` for tests; live network / OpenAI-compatible LLM for manual runs).
+`PainPointMiner.run(input?) → RunArtifact` is the single public product seam. Script CLI and Skill are adapters over it. Signal Source, embedding, Follow-on Fetch, Store Second Pass, and Analysis Pass adapters are injectable behind that seam (fixtures / test doubles / scripted `LlmClient` / recorded embedding HTTP for tests; live network / OpenAI-compatible APIs for manual runs).
 
 Pipeline inside `run`: Entry Catalog Signal Sources → Follow-on Fetch (Demand Signal pages before alternative/review) → Store Second Pass (reviews only for apps mentioned in forum Evidence) → Candidate Clusters / Count Gate / Saturation Stop → optional **per-cluster** Analysis Pass (Hollow vs Brief + Signal Mix) → optional Competition Filter view. Deepened Evidence feeds the same clustering and gates.
 
@@ -32,12 +32,16 @@ Live cold-start adapters implement the same `SignalSource` port used by `run` (A
 
 App Store / Play implement `StoreReviewSource` (reviews only for apps mentioned in forum Evidence). Product Hunt / Indie Hackers implement `FollowOnFetcher` for referenced URLs — not cold-start firehoses (ADR-0007 / ADR-0010).
 
-CI uses injectable `AdapterHttpClient` / `JsonHttpClient` recordings — no live network required. For a manual live crawl:
+### Live Embeddings (meaning similarity)
+
+`createOpenAiCompatibleEmbeddings` implements the existing injectable `Embeddings` port so Candidate Clusters can group the same Pain Point across different wording via cosine similarity (ADR-0005). CI uses a scripted / recorded `fetchImpl` — no live network. Script CLI still defaults to `createFixtureEmbeddings()` for offline / deterministic mining.
+
+For a manual live crawl with meaning-aware clustering:
 
 ```ts
 import {
   createPainPointMiner,
-  createFixtureEmbeddings,
+  createOpenAiCompatibleEmbeddings,
   createEntryCatalogSignalSources,
   createFetchHttpClient,
   createSourceCatalogFollowOnFetcher,
@@ -48,7 +52,10 @@ const http = createFetchHttpClient();
 
 const miner = createPainPointMiner({
   signalSources: createEntryCatalogSignalSources({ http }),
-  embeddings: createFixtureEmbeddings(),
+  embeddings: createOpenAiCompatibleEmbeddings({
+    apiKey: process.env.OPENAI_API_KEY!,
+    model: process.env.OPENAI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+  }),
   followOnFetcher: createSourceCatalogFollowOnFetcher({
     http,
     productHuntAccessToken: process.env.PRODUCT_HUNT_TOKEN,
@@ -59,7 +66,7 @@ const miner = createPainPointMiner({
 const artifact = await miner.run({});
 ```
 
-Script CLI still defaults to built-in fixtures so local/CI inspection stays offline. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH deepenings.
+Script CLI still defaults to built-in fixtures so local/CI inspection stays offline. Product Hunt Follow-on needs a developer token for live GraphQL; omit the token to skip PH deepenings. Live embeddings need an API key when you opt in; omit them and keep fixtures for offline runs.
 
 ### Defaults
 
