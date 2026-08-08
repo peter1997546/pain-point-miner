@@ -17,12 +17,12 @@ The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies t
 _Avoid_: Notebook one-off (unless it is the Script), skill-only crawl
 
 **Skill**:
-Agent-facing orchestration: interview optional Intent, call the Script for **live** mining, fan out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — then hand outcomes to a Report Agent to assemble the Run Report. Never the entire crawl corpus in one prompt.
-_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode
+Agent-facing orchestration: **interview Intent before mining** (offer every field; the Builder may leave any or all blank only after being asked), call the Script for **live** mining, fan out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — then hand outcomes to a Report Agent to assemble the Run Report. Never the entire crawl corpus in one prompt. The agent must not assume empty Intent unless the Builder explicitly opts out or says Intent is empty.
+_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode, skipping the Intent interview because empty Intent is a valid Script input
 
 **Intent**:
-Optional free-text preference notes the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
-_Avoid_: Intake form, requirements form, restriction sheet, treating Intent as crawl config
+Optional free-text preference notes the Builder *may* fill after the Skill interviews them: Theme, product shape, constraints, hard nos, and success definition. An empty Intent value is valid for the Script once the Builder has skipped or opted out — it is not permission for the agent to skip asking. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
+_Avoid_: Intake form, requirements form, restriction sheet, treating Intent as crawl config, equating “empty Intent is valid” with “do not interview”
 
 **Theme**:
 An optional broad directional preference (e.g. “AI automation”, “提升效率”). Not a use case, workflow, or Target Market.
