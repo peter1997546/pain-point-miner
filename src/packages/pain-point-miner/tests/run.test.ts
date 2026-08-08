@@ -43,4 +43,34 @@ describe("PainPointMiner.run", () => {
     expect(artifact.intent).toEqual({});
     expect(artifact.evidence).toEqual([...knownEvidence]);
   });
+
+  it("degrades gracefully when one Signal Source throws, keeping Evidence from succeeding sources", async () => {
+    const failingSource = (name: string, message: string) => ({
+      name,
+      async collect() {
+        throw new Error(message);
+      },
+    });
+    const miner = createPainPointMiner({
+      signalSources: [
+        failingSource("broken-before", "simulated Signal Source outage"),
+        ...createTestSignalSources(),
+        failingSource("broken-after", "another Signal Source outage"),
+      ],
+      embeddings: createFixtureEmbeddings(),
+    });
+
+    const artifact = await miner.run({});
+
+    expect(artifact.evidence).toEqual([...knownEvidence]);
+    expect(artifact.intent).toEqual({});
+    expect(artifact.candidateClusters.length).toBeGreaterThan(0);
+    expect(artifact.gatedClusters).toEqual([]);
+    expect(artifact.saturationStopped).toBe(false);
+    expect(artifact.analysisOutcomes).toEqual([]);
+    expect(artifact.briefs).toEqual([]);
+    expect(artifact.hollowRejections).toEqual([]);
+    expect(artifact.visibleBriefs).toEqual([]);
+    expect(artifact.hiddenByCompetitionFilter).toEqual([]);
+  });
 });

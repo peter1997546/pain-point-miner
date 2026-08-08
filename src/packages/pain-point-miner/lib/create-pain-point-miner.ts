@@ -162,7 +162,13 @@ export function createPainPointMiner(
       for (const source of deps.signalSources) {
         // Intent preference notes are echoed and forwarded to Analysis Pass only —
         // they must not select, whitelist, or drop Signal Sources (ADR-0004).
-        const batch = await source.collect();
+        // One failing Signal Source must not void the run (spec #4 / #23).
+        let batch: readonly EvidenceRef[] = [];
+        try {
+          batch = await source.collect();
+        } catch {
+          // Degrade to an empty batch; other sources still contribute Evidence.
+        }
         await ingestBatch(
           state,
           batch,
