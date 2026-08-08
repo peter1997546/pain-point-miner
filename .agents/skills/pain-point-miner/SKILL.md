@@ -23,16 +23,38 @@ Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009
 
 ### 1. Mine via Script
 
-From the repo root (fixtures; no live network in v1 Script defaults). Prefer the **Skill handoff** so chat never loads the full scrape `evidence[]`:
+From the repo root. Prefer the **Skill handoff** so chat never loads the full scrape `evidence[]`:
 
 ```bash
 npm install
+# Offline fixtures (default — no live network / embedding API)
 npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json
+# Live discovery — Entry Catalog + Follow-on/Store + live Embeddings
+OPENAI_API_KEY=sk-... npm run cli -- --live --format json --handoff skill --out .pain-point-miner/handoff.json
 ```
 
 That file carries only `intent`, `gatedClusters`, and `saturationStopped` (`toSkillMiningHandoff`). Use a full `--format json` artifact only for local inspection outside Analysis Pass.
 
-Or programmatically — Script mining **without** an `analysisPass` port, then Skill fan-out:
+Or programmatically — Script mining **without** an `analysisPass` port, then Skill fan-out.
+
+Live discovery (preferred for real mining — do not pair Entry Catalog with fixture Embeddings):
+
+```ts
+import {
+  createLiveDiscoveryMiner,
+  createSkillOrchestrator,
+  createLlmAnalysisPass,
+  createOpenAiCompatibleLlmClient,
+} from "pain-point-miner";
+
+const scriptMiner = createLiveDiscoveryMiner({
+  apiKey: process.env.OPENAI_API_KEY!,
+  productHuntAccessToken: process.env.PRODUCT_HUNT_TOKEN,
+  // no analysisPass — Skill owns fan-out
+});
+```
+
+Fixture path (CI / offline inspection):
 
 ```ts
 import {
@@ -53,7 +75,11 @@ const scriptMiner = createPainPointMiner({
   storeReviewSource: createDefaultFixtureStoreReviewSource(),
   // no analysisPass — Skill owns fan-out
 });
+```
 
+Then (either miner):
+
+```ts
 const analysisPass = createLlmAnalysisPass({
   llm: createOpenAiCompatibleLlmClient({
     apiKey: process.env.OPENAI_API_KEY!,

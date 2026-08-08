@@ -5,12 +5,14 @@ import {
   createDefaultFixtureStoreReviewSource,
   createFixtureEmbeddings,
   createFixtureSignalSources,
+  createLiveDiscoveryMiner,
   createPainPointMiner,
   formatRunArtifact,
   toSkillMiningHandoff,
   type ArtifactFormat,
   type Embeddings,
   type FollowOnFetcher,
+  type LiveDiscoveryMinerDeps,
   type SignalSource,
   type StoreReviewSource,
 } from "./index.js";
@@ -20,6 +22,10 @@ export type CliIo = {
   embeddings?: Embeddings;
   followOnFetcher?: FollowOnFetcher;
   storeReviewSource?: StoreReviewSource;
+  /** Env for `--live` (defaults to `process.env`). */
+  env?: NodeJS.ProcessEnv;
+  /** Overrides for the `--live` composition (injectable doubles / recordings). */
+  liveDiscovery?: LiveDiscoveryMinerDeps;
   stdout?: { write(chunk: string): unknown };
 };
 
@@ -37,10 +43,12 @@ function parseArgs(argv: string[]): {
   format: ArtifactFormat;
   outPath: string | undefined;
   skillHandoff: boolean;
+  live: boolean;
 } {
   let format: ArtifactFormat = "markdown";
   let outPath: string | undefined;
   let skillHandoff = false;
+  let live = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -66,27 +74,80 @@ function parseArgs(argv: string[]): {
       i += 1;
       continue;
     }
+    if (arg === "--live") {
+      live = true;
+      continue;
+    }
     if (arg === "--help" || arg === "-h") {
       throw new Error("HELP");
     }
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  return { format, outPath, skillHandoff };
+  return { format, outPath, skillHandoff, live };
 }
 
-const HELP = `Usage: pain-point-miner [--format json|markdown] [--handoff skill] [--out path]
+const HELP = `Usage: pain-point-miner [--live] [--format json|markdown] [--handoff skill] [--out path]
 
-Runs PainPointMiner.run with empty Intent defaults against injectable
-fixture Signal Sources (no live network) and emits a RunArtifact.
+Runs PainPointMiner.run with empty Intent defaults and emits a RunArtifact.
+
+Default (no --live): fixture Signal Sources / Embeddings / Follow-on / Store
+(no live network or embedding API) for CI and local inspection.
+
+--live: Entry Catalog cold start + Follow-on Fetch / Store Second Pass + live
+Embeddings (OPENAI_API_KEY required). Optional PRODUCT_HUNT_TOKEN for PH
+Follow-on. Does not use hash-only fixture Embeddings.
 
 Options:
+  --live     Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
   --format   Output format (default: markdown)
   --handoff  skill — emit condensed gated clusters for Skill Analysis Pass
              (JSON only; omits full scrape evidence[])
   --out      Write to a file instead of stdout
   -h, --help Show this help
 `;
+
+function buildMiner(live: boolean, io: CliIo) {
+  if (!live) {
+    return createPainPointMiner({
+      signalSources: io.signalSources ?? createFixtureSignalSources(),
+      embeddings: io.embeddings ?? createFixtureEmbeddings(),
+      followOnFetcher:
+        io.followOnFetcher ?? createDefaultFixtureFollowOnFetcher(),
+      storeReviewSource:
+        io.storeReviewSource ?? createDefaultFixtureStoreReviewSource(),
+    });
+  }
+
+  const env = io.env ?? process.env;
+  const fromLive = io.liveDiscovery ?? {};
+  const apiKey = fromLive.apiKey ?? env.OPENAI_API_KEY;
+  const embeddingModel = fromLive.embeddingModel ?? env.OPENAI_EMBEDDING_MODEL;
+  const productHuntAccessToken =
+    fromLive.productHuntAccessToken ?? env.PRODUCT_HUNT_TOKEN;
+
+  // Top-level CliIo ports override liveDiscovery bag (tests inject either).
+  const liveDeps: LiveDiscoveryMinerDeps = {
+    ...fromLive,
+    ...(apiKey !== undefined ? { apiKey } : {}),
+    ...(embeddingModel !== undefined ? { embeddingModel } : {}),
+    ...(productHuntAccessToken !== undefined
+      ? { productHuntAccessToken }
+      : {}),
+    ...(io.signalSources !== undefined
+      ? { signalSources: io.signalSources }
+      : {}),
+    ...(io.embeddings !== undefined ? { embeddings: io.embeddings } : {}),
+    ...(io.followOnFetcher !== undefined
+      ? { followOnFetcher: io.followOnFetcher }
+      : {}),
+    ...(io.storeReviewSource !== undefined
+      ? { storeReviewSource: io.storeReviewSource }
+      : {}),
+  };
+
+  return createLiveDiscoveryMiner(liveDeps);
+}
 
 export async function runCli(
   argv: string[],
@@ -95,19 +156,12 @@ export async function runCli(
   const stdout = io.stdout ?? process.stdout;
 
   try {
-    const { format, outPath, skillHandoff } = parseArgs(argv);
+    const { format, outPath, skillHandoff, live } = parseArgs(argv);
     if (skillHandoff && format !== "json") {
       throw new Error("--handoff skill requires --format json");
     }
 
-    const miner = createPainPointMiner({
-      signalSources: io.signalSources ?? createFixtureSignalSources(),
-      embeddings: io.embeddings ?? createFixtureEmbeddings(),
-      followOnFetcher:
-        io.followOnFetcher ?? createDefaultFixtureFollowOnFetcher(),
-      storeReviewSource:
-        io.storeReviewSource ?? createDefaultFixtureStoreReviewSource(),
-    });
+    const miner = buildMiner(live, io);
     const artifact = await miner.run({});
     const rendered = skillHandoff
       ? `${JSON.stringify(toSkillMiningHandoff(artifact), null, 2)}\n`

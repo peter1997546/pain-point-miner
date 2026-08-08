@@ -6,6 +6,10 @@ export {
   type OpenAiCompatibleEmbeddingsInit,
 } from "./lib/openai-compatible-embeddings.js";
 export {
+  createLiveDiscoveryMiner,
+  type LiveDiscoveryMinerDeps,
+} from "./lib/live-discovery-miner.js";
+export {
   createFixtureFollowOnFetcher,
   createFixtureStoreReviewSource,
 } from "./lib/fixture-follow-on-store.js";
