@@ -13,7 +13,7 @@ The job of this tool: crawl Signal Sources, group Evidence into Candidate Cluste
 _Avoid_: Verifier, restricted search form, brainstormer
 
 **Intent**:
-Optional free-text fields the Builder *may* fill (Theme, product shape, constraints, hard nos, success definition). Empty Intent is valid. Filled fields are steers; they must not become a restriction sheet whose purpose is to pre-shrink the result set.
+Optional free-text fields the Builder *may* fill (Theme, product shape, constraints, hard nos, success definition). Empty Intent is valid. Filled fields do not pick Signal Sources or invent crawl targets; they may inform the Analysis Pass. Expanding the crawl happens by following concrete pages/apps the Miner already found.
 _Avoid_: Intake form, requirements form, restriction sheet
 
 **Theme**:
@@ -79,6 +79,14 @@ _Avoid_: G2/Capterra (v1), GitHub issues (v1), Chrome Web Store (v1), universal 
 **Signal Source**:
 One channel from the Source Catalog mined for Evidence.
 _Avoid_: Corpus, scrape target (implementation wording)
+
+**Follow-on Fetch**:
+When crawled material points at a *specific* page, thread, product, or app, the Miner goes there next (e.g. a Reddit hit names an app → fetch that app’s Store reviews; a post links a megathread → fetch that thread). This is how the crawl deepens — not by the Builder whitelisting sources.
+_Avoid_: Intent-biased source picking, manual URL homework (as a requirement)
+
+**Store Second Pass**:
+App Store / Play reviews are fetched for apps *mentioned* in forum-style Evidence (Reddit, HN, Product Hunt, Indie Hackers), not by sweeping the stores from a preset app list.
+_Avoid_: Seed app list as the primary store strategy, category leaderboard sweep
 
 **Brief**:
 Enriched output of the Analysis Pass on a Pain Point: inferred Target Market, Competitive Landscape, demand / status-quo spend signals, Delivery Cost, and a rough difficulty band (S/M/L) — still grounded in Evidence. A sketched MVP / next-build shape is optional, not required in v1.
