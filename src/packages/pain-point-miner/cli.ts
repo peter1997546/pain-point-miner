@@ -94,12 +94,12 @@ Runs PainPointMiner.run with empty Intent defaults and emits a RunArtifact.
 Default (no --live): fixture Signal Sources / Embeddings / Follow-on / Store
 (no live network or embedding API) for CI and local inspection.
 
---live: Entry Catalog cold start + Follow-on / Store Second Pass + live
+--live: Entry Catalog cold start + Follow-on Fetch / Store Second Pass + live
 Embeddings (OPENAI_API_KEY required). Optional PRODUCT_HUNT_TOKEN for PH
 Follow-on. Does not use hash-only fixture Embeddings.
 
 Options:
-  --live     Live discovery composition (Entry Catalog + deepenings + embeddings)
+  --live     Live discovery (Entry Catalog + Follow-on/Store + Embeddings)
   --format   Output format (default: markdown)
   --handoff  skill — emit condensed gated clusters for Skill Analysis Pass
              (JSON only; omits full scrape evidence[])
@@ -120,37 +120,30 @@ function buildMiner(live: boolean, io: CliIo) {
   }
 
   const env = io.env ?? process.env;
-  const apiKey = io.liveDiscovery?.apiKey ?? env.OPENAI_API_KEY;
-  const embeddingModel =
-    io.liveDiscovery?.embeddingModel ?? env.OPENAI_EMBEDDING_MODEL;
+  const fromLive = io.liveDiscovery ?? {};
+  const apiKey = fromLive.apiKey ?? env.OPENAI_API_KEY;
+  const embeddingModel = fromLive.embeddingModel ?? env.OPENAI_EMBEDDING_MODEL;
   const productHuntAccessToken =
-    io.liveDiscovery?.productHuntAccessToken ?? env.PRODUCT_HUNT_TOKEN;
-  const signalSources = io.signalSources ?? io.liveDiscovery?.signalSources;
-  const embeddings = io.embeddings ?? io.liveDiscovery?.embeddings;
-  const followOnFetcher =
-    io.followOnFetcher ?? io.liveDiscovery?.followOnFetcher;
-  const storeReviewSource =
-    io.storeReviewSource ?? io.liveDiscovery?.storeReviewSource;
+    fromLive.productHuntAccessToken ?? env.PRODUCT_HUNT_TOKEN;
 
+  // Top-level CliIo ports override liveDiscovery bag (tests inject either).
   const liveDeps: LiveDiscoveryMinerDeps = {
+    ...fromLive,
     ...(apiKey !== undefined ? { apiKey } : {}),
     ...(embeddingModel !== undefined ? { embeddingModel } : {}),
-    ...(io.liveDiscovery?.embeddingBaseUrl !== undefined
-      ? { embeddingBaseUrl: io.liveDiscovery.embeddingBaseUrl }
-      : {}),
-    ...(io.liveDiscovery?.embeddingsFetchImpl !== undefined
-      ? { embeddingsFetchImpl: io.liveDiscovery.embeddingsFetchImpl }
-      : {}),
     ...(productHuntAccessToken !== undefined
       ? { productHuntAccessToken }
       : {}),
-    ...(io.liveDiscovery?.http !== undefined
-      ? { http: io.liveDiscovery.http }
+    ...(io.signalSources !== undefined
+      ? { signalSources: io.signalSources }
       : {}),
-    ...(signalSources !== undefined ? { signalSources } : {}),
-    ...(embeddings !== undefined ? { embeddings } : {}),
-    ...(followOnFetcher !== undefined ? { followOnFetcher } : {}),
-    ...(storeReviewSource !== undefined ? { storeReviewSource } : {}),
+    ...(io.embeddings !== undefined ? { embeddings: io.embeddings } : {}),
+    ...(io.followOnFetcher !== undefined
+      ? { followOnFetcher: io.followOnFetcher }
+      : {}),
+    ...(io.storeReviewSource !== undefined
+      ? { storeReviewSource: io.storeReviewSource }
+      : {}),
   };
 
   return createLiveDiscoveryMiner(liveDeps);

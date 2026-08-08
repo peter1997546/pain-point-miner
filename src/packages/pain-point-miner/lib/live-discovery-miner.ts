@@ -57,7 +57,13 @@ export function createLiveDiscoveryMiner(
       deps.signalSources ?? createEntryCatalogSignalSources({ http }),
     embeddings,
     followOnFetcher:
-      deps.followOnFetcher ?? createLiveFollowOnFetcher(http, deps),
+      deps.followOnFetcher ??
+      createSourceCatalogFollowOnFetcher({
+        http,
+        ...(deps.productHuntAccessToken !== undefined
+          ? { productHuntAccessToken: deps.productHuntAccessToken }
+          : {}),
+      }),
     storeReviewSource:
       deps.storeReviewSource ?? createStoreReviewSource({ http }),
   });
@@ -80,18 +86,6 @@ function createLiveEmbeddings(deps: LiveDiscoveryMinerDeps): Embeddings {
       : {}),
     ...(deps.embeddingsFetchImpl !== undefined
       ? { fetchImpl: deps.embeddingsFetchImpl }
-      : {}),
-  });
-}
-
-function createLiveFollowOnFetcher(
-  http: AdapterHttpClient,
-  deps: LiveDiscoveryMinerDeps,
-): FollowOnFetcher {
-  return createSourceCatalogFollowOnFetcher({
-    http,
-    ...(deps.productHuntAccessToken !== undefined
-      ? { productHuntAccessToken: deps.productHuntAccessToken }
       : {}),
   });
 }
