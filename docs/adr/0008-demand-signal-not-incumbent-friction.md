@@ -1,0 +1,3 @@
+# Demand Signal vs Incumbent Friction, both countable with Signal Mix
+
+Cold-start and Follow-on Fetch still prefer Demand Signals (missing tool, manual workaround, “why is there no…”). Incumbent Friction (“alternative to X”, named-product reviews/rants) may count toward Evidence Count, but every Candidate Cluster / Brief must carry a Signal Mix label so “find demand” and “attack an incumbent” stay distinguishable dimensions.
