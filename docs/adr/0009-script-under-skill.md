@@ -1,3 +1,3 @@
-# Script + Skill hybrid because crawl volume blows up agent context
+# Script + Skill; Analysis Pass is per-cluster (multi-agent OK)
 
-A pure Skill that pulls Reddit / HN / stores / follow-ons into the agent context will overwhelm the model with raw Evidence. v1 keeps a Script for crawl → cluster → Count Gate / Saturation Stop, and a Skill that orchestrates the Script then runs Analysis Pass only on the condensed candidates.
+A pure Skill that pulls Reddit / HN / stores / follow-ons into one agent context will overwhelm the model. v1 keeps a Script for crawl → cluster → Count Gate / Saturation Stop. The Skill orchestrates the Script, then runs Analysis Pass **one Candidate Cluster at a time** (fan-out multi-agent is encouraged) so each analysis sees only that cluster’s Evidence — never a dump of the full scrape.

@@ -1,6 +1,6 @@
 # Pain Point Miner
 
-Helps an indie builder discover real Pain Points by mining public signals and analyzing them — a Miner that *finds* unmet demand, not a form that *restricts* search, and not a competitor-complaint scraper whose job is only to improve on a named product. v1 is a **Script + Skill** hybrid: the Script holds crawl/cluster/count outside the model context; the Skill orchestrates and runs the Analysis Pass on condensed candidates.
+Helps an indie builder discover real Pain Points by mining public signals and analyzing them — a Miner that *finds* unmet demand, not a form that *restricts* search, and not a competitor-complaint scraper whose job is only to improve on a named product. v1 is a **Script + Skill** hybrid: the Script holds crawl/cluster/count outside the model context; the Skill runs a **per-cluster** Analysis Pass (one Candidate Cluster / Pain Point at a time, optionally multi-agent) — never the full scrape dump.
 
 ## Language
 
@@ -17,8 +17,8 @@ The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies t
 _Avoid_: Notebook one-off (unless it is the Script), skill-only crawl
 
 **Skill**:
-Agent-facing orchestration that calls the Script for mining, then runs (or triggers) the Analysis Pass on the condensed Candidate Clusters / Pain Points the Script emits — not on the raw scrape corpus.
-_Avoid_: Skill-only product, pasting full crawl into chat
+Agent-facing orchestration that calls the Script for mining, then fans out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — never the entire crawl corpus in one prompt.
+_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump
 
 **Intent**:
 Optional free-text fields the Builder *may* fill. Empty Intent is valid. Filled fields do not invent crawl targets; deepening is via Follow-on Fetch of concrete pages already found. May inform the Analysis Pass.
@@ -73,8 +73,8 @@ Analysis Pass judgment that complaints are not a real Pain Point: wish-only with
 _Avoid_: Low quality (vague), spam (different problem)
 
 **Analysis Pass**:
-AI steps: Hollow vs real, then Brief enrichment (Competitive Landscape, Delivery Cost, status-quo spend, difficulty, etc.). Does not invent Evidence.
-_Avoid_: Brainstorm pass, ideation, “Software Fit” (retired)
+AI steps run **per Candidate Cluster** (one problem at a time; multi-agent allowed): Hollow vs real, Signal Mix, then Brief enrichment (Competitive Landscape, Delivery Cost, status-quo spend, difficulty, etc.). Does not invent Evidence and must not receive the full scrape as one blob.
+_Avoid_: Brainstorm pass, ideation, “Software Fit” (retired), batch-dump analysis
 
 **Competitive Landscape**:
 Annotation from the Analysis Pass about existing offerings and how strongly they already serve the relevant Target Market (including local penetration).
