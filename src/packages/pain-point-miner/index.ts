@@ -1,3 +1,4 @@
+export { applyCompetitionFilter } from "./lib/competition-filter.js";
 export { createPainPointMiner } from "./lib/create-pain-point-miner.js";
 export { createFixtureEmbeddings } from "./lib/fixture-embeddings.js";
 export {
@@ -16,19 +17,28 @@ export {
   formatRunArtifact,
   type ArtifactFormat,
 } from "./lib/format-run-artifact.js";
+export { signalMixFromEvidence } from "./lib/signal-mix.js";
 export type {
+  AnalysisOutcome,
+  AnalysisPass,
+  AnalysisPassInput,
+  Brief,
   CandidateCluster,
+  Difficulty,
   Embeddings,
   EvidenceRef,
   FollowOnFetcher,
   FollowOnKind,
   FollowOnTarget,
+  HollowRejection,
   Intent,
   MentionedApp,
   PainPointMiner,
   PainPointMinerDeps,
   RunArtifact,
   RunInput,
+  SignalKind,
+  SignalMix,
   SignalSource,
   StoreReviewSource,
 } from "./lib/types.js";

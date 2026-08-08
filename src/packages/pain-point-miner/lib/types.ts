@@ -15,7 +15,29 @@ export type RunInput = {
   countGateThreshold?: number;
   /** Saturation Stop K; default halt once 20 Count-Gated clusters exist. */
   saturationStopK?: number;
+  /**
+   * Competition Filter threshold (ADR-0001).
+   * Hides Briefs with `competitionDensity` above this value after emission.
+   * Omitted / undefined means no filter — high-competition Briefs stay visible.
+   */
+  competitionFilterThreshold?: number;
 };
+
+/**
+ * Demand Signal vs Incumbent Friction dimension on a single Evidence item
+ * (ADR-0008). Optional on crawl fixtures; unlabeled items still count toward
+ * Evidence Count but do not increment either mix bucket.
+ */
+export type SignalKind = "demand-signal" | "incumbent-friction";
+
+/** How much of a cluster / Brief is Demand Signal vs Incumbent Friction. */
+export type SignalMix = {
+  demandSignalCount: number;
+  incumbentFrictionCount: number;
+};
+
+/** Delivery difficulty triage on a Brief. */
+export type Difficulty = "S" | "M" | "L";
 
 /**
  * Kind of concrete page discovered for Follow-on Fetch.
@@ -57,6 +79,8 @@ export type EvidenceRef = {
   followOnTargets?: readonly FollowOnTarget[];
   /** Apps named in this Evidence for Store Second Pass (forum mentions). */
   mentionedApps?: readonly MentionedApp[];
+  /** Demand Signal vs Incumbent Friction label when known (ADR-0008). */
+  signalKind?: SignalKind;
 };
 
 /** Code-grouped Evidence treated as one underlying complaint for counting. */
@@ -67,6 +91,61 @@ export type CandidateCluster = {
   evidenceCount: number;
   /** True when Evidence Count meets the Count Gate (analysis-ready). */
   passedCountGate: boolean;
+  /** Pre-analysis Signal Mix hint from Evidence labels (ADR-0008). */
+  signalMix: SignalMix;
+};
+
+/**
+ * Enriched Analysis Pass output for a surviving Pain Point (not Hollow).
+ * Competition density is an annotation for the Builder's filter — not a kill.
+ */
+export type Brief = {
+  clusterId: string;
+  painPointSummary: string;
+  evidenceLinks: readonly string[];
+  targetMarket: string;
+  competitiveLandscape: string;
+  statusQuoSpendSignals: string;
+  deliveryCost: string;
+  difficulty: Difficulty;
+  signalMix: SignalMix;
+  /**
+   * Higher means denser / more Mature Solution presence in the relevant market.
+   * Used by Competition Filter; never a silent system hard-kill (ADR-0001).
+   */
+  competitionDensity: number;
+};
+
+/** Hollow judgment from Analysis Pass for a gated Candidate Cluster. */
+export type HollowRejection = {
+  clusterId: string;
+  reason: string;
+  signalMix: SignalMix;
+};
+
+/** Per-cluster Analysis Pass result: Hollow rejection or Pain Point Brief. */
+export type AnalysisOutcome =
+  | {
+      status: "hollow";
+      clusterId: string;
+      reason: string;
+      signalMix: SignalMix;
+    }
+  | { status: "brief"; brief: Brief };
+
+/** Input to one Analysis Pass invocation — a single Candidate Cluster. */
+export type AnalysisPassInput = {
+  cluster: CandidateCluster;
+  intent: Intent;
+};
+
+/**
+ * Injectable Analysis Pass port (test double first; live LLM later).
+ * Must be invoked once per gated cluster — never with the full scrape blob
+ * or all clusters packed into one call (ADR-0011).
+ */
+export type AnalysisPass = {
+  analyze(input: AnalysisPassInput): Promise<AnalysisOutcome>;
 };
 
 /** Condensed public result of a mining run. */
@@ -82,6 +161,19 @@ export type RunArtifact = {
   gatedClusters: CandidateCluster[];
   /** True when mining halted because Saturation Stop K was reached. */
   saturationStopped: boolean;
+  /** Per-cluster Analysis Pass outcomes in gated-cluster order. */
+  analysisOutcomes: AnalysisOutcome[];
+  /** Surviving Pain Point Briefs (Hollow excluded). Full annotated set. */
+  briefs: Brief[];
+  /** Hollow rejections from Analysis Pass. */
+  hollowRejections: HollowRejection[];
+  /**
+   * Briefs visible after optional Competition Filter.
+   * Equals `briefs` when no filter is applied — never silently emptied.
+   */
+  visibleBriefs: Brief[];
+  /** Briefs hidden by Competition Filter; annotations remain on `briefs`. */
+  hiddenByCompetitionFilter: Brief[];
 };
 
 /** Injectable Signal Source port (fixtures in tests; live adapters later). */
@@ -118,6 +210,11 @@ export type PainPointMinerDeps = {
   followOnFetcher?: FollowOnFetcher;
   /** Optional; when omitted, Store Second Pass is skipped. */
   storeReviewSource?: StoreReviewSource;
+  /**
+   * Optional Analysis Pass (test double / Skill LLM).
+   * When omitted, mining stops after Count Gate — no Briefs / Hollow judgments.
+   */
+  analysisPass?: AnalysisPass;
   /** Cosine threshold for meaning merges; default 0.8. */
   meaningSimilarityThreshold?: number;
   /**
