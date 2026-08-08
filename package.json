@@ -1,0 +1,38 @@
+{
+  "name": "pain-point-miner",
+  "version": "0.1.0",
+  "description": "Mine real, evidence-grounded Pain Points from public Signal Sources",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "pain-point-miner": "./dist/src/packages/pain-point-miner/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/packages/pain-point-miner/index.d.ts",
+      "import": "./dist/src/packages/pain-point-miner/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cli": "tsx src/packages/pain-point-miner/cli.ts",
+    "check": "npm run typecheck && npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peter1997546/pain-point-miner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/peter1997546/pain-point-miner/issues"
+  },
+  "homepage": "https://github.com/peter1997546/pain-point-miner#readme",
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}
