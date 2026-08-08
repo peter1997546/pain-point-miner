@@ -14,6 +14,20 @@ export {
   defaultFixtureStoreReviews,
 } from "./lib/fixture-signal-source.js";
 export {
+  ENTRY_CATALOG_DEPRIORITIZED_REDDIT_BOARDS,
+  ENTRY_CATALOG_HN_ASK_QUERIES,
+  ENTRY_CATALOG_REDDIT_BOARDS,
+  ENTRY_CATALOG_REDDIT_DEMAND_QUERIES,
+} from "./lib/entry-catalog.js";
+export { createEntryCatalogSignalSources } from "./lib/entry-catalog-signal-sources.js";
+export { createHackerNewsSignalSource } from "./lib/hacker-news-signal-source.js";
+export {
+  createFetchHttpClient,
+  createRecordingHttpClient,
+  type JsonHttpClient,
+} from "./lib/json-http-client.js";
+export { createRedditSignalSource } from "./lib/reddit-signal-source.js";
+export {
   formatRunArtifact,
   type ArtifactFormat,
 } from "./lib/format-run-artifact.js";
