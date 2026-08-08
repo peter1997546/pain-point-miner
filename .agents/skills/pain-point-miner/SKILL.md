@@ -49,16 +49,17 @@ From the repo root. Prefer the **Skill handoff** so chat never loads the full sc
 npm install
 # Real usage: live Entry Catalog (+ Follow-on/Store). Embeddings must be free/local (ADR-0012).
 # Omit token-gated deepenings (e.g. PRODUCT_HUNT_TOKEN) when unset — do not block the run.
-# Handoff includes sourceDegradationNotes for the Run Report when deepenings skip.
+# Handoff includes sourceDegradationNotes for the Run Report when deepenings
+# skip or a mining-port Signal Source / Follow-on / Store Second Pass fails.
 npm run cli -- --live --format json --handoff skill \
   --out .pain-point-miner/runs/<timestamp>/handoff.json \
   [--theme "..."] [--product-shape "..."] [--constraints "..."] \
   [--hard-nos "..."] [--success-definition "..."]
 ```
 
-Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gatedClusters`, `saturationStopped`, and `sourceDegradationNotes` (`toSkillMiningHandoff` + `liveSourceDegradationNotes`).
+Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gatedClusters`, `saturationStopped`, and `sourceDegradationNotes` (`toSkillMiningHandoff` merges `RunArtifact` runtime notes with `liveSourceDegradationNotes` token-gated skips).
 
-**Priority for live sources:** token-free paths first (Reddit, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; notes land on the handoff for the Run Report.
+**Priority for live sources:** token-free paths first (Reddit, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; port-level runtime failures also note without blocking — both land on the handoff for the Run Report.
 
 **Embeddings:** `--live` defaults to free/local `createLocalEmbeddings` (ADR-0012; model `Xenova/bge-small-en-v1.5`, cache `PPM_EMBEDDINGS_CACHE_DIR` / `.pain-point-miner/models`). Do **not** treat `OPENAI_API_KEY` / paid embedding APIs as the product requirement. Prefer snapshot-baked weights via `npm run bake:local-embeddings` (Cloud `.cursor/environment.json` install; ticket #37). OpenAI-compatible is experimental only (`PPM_EMBEDDINGS_BACKEND=openai-compatible`).
 

@@ -1,5 +1,10 @@
 import { applyCompetitionFilter } from "./competition-filter.js";
 import { clusterEvidence } from "./cluster-evidence.js";
+import {
+  followOnFetchDegradationNote,
+  signalSourceDegradationNote,
+  storeSecondPassDegradationNote,
+} from "./live-source-degradation-notes.js";
 import { partitionAnalysisOutcomes } from "./partition-analysis-outcomes.js";
 import type {
   AnalysisOutcome,
@@ -158,6 +163,7 @@ export function createPainPointMiner(
         candidateClusters: [],
         saturationStopped: false,
       };
+      const sourceDegradationNotes: string[] = [];
 
       for (const source of deps.signalSources) {
         // Intent preference notes are echoed and forwarded to Analysis Pass only —
@@ -166,8 +172,11 @@ export function createPainPointMiner(
         let batch: readonly EvidenceRef[] = [];
         try {
           batch = await source.collect();
-        } catch {
-          // Degrade to an empty batch; other sources still contribute Evidence.
+        } catch (error) {
+          // Degrade to an empty batch; surface a Builder-facing note (ticket #43).
+          sourceDegradationNotes.push(
+            signalSourceDegradationNote(source.name, error),
+          );
         }
         await ingestBatch(
           state,
@@ -196,8 +205,11 @@ export function createPainPointMiner(
           let batch: readonly EvidenceRef[] = [];
           try {
             batch = await deps.followOnFetcher.fetchPage(next.url);
-          } catch {
-            // Degrade to an empty batch; other deepenings still contribute.
+          } catch (error) {
+            // Degrade to an empty batch; surface a Builder-facing note (ticket #43).
+            sourceDegradationNotes.push(
+              followOnFetchDegradationNote(next.url, error),
+            );
           }
           await ingestBatch(
             state,
@@ -216,8 +228,11 @@ export function createPainPointMiner(
           let batch: readonly EvidenceRef[] = [];
           try {
             batch = await deps.storeReviewSource.fetchReviews(app);
-          } catch {
-            // Degrade to an empty batch; other mentioned apps still contribute.
+          } catch (error) {
+            // Degrade to an empty batch; surface a Builder-facing note (ticket #43).
+            sourceDegradationNotes.push(
+              storeSecondPassDegradationNote(app, error),
+            );
           }
           await ingestBatch(
             state,
@@ -267,6 +282,7 @@ export function createPainPointMiner(
         hollowRejections,
         visibleBriefs: visible,
         hiddenByCompetitionFilter: hidden,
+        sourceDegradationNotes,
       };
     },
   };

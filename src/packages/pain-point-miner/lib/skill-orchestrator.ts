@@ -78,6 +78,7 @@ export function createSkillOrchestrator(
         hollowRejections,
         visibleBriefs: visible,
         hiddenByCompetitionFilter: hidden,
+        sourceDegradationNotes: mining.sourceDegradationNotes,
       };
     },
   };

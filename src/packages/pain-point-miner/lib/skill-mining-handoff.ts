@@ -1,3 +1,4 @@
+import { mergeSourceDegradationNotes } from "./live-source-degradation-notes.js";
 import type {
   CandidateCluster,
   Intent,
@@ -15,13 +16,18 @@ export type SkillMiningHandoff = {
   gatedClusters: CandidateCluster[];
   saturationStopped: boolean;
   /**
-   * Skipped or degraded live sources (e.g. token-gated Follow-on).
-   * Empty when nothing was skipped / not a live run.
+   * Skipped or degraded live sources (token-gated Follow-on + runtime port
+   * failures). Empty when nothing was skipped / degraded.
    */
   sourceDegradationNotes: readonly string[];
 };
 
 export type ToSkillMiningHandoffOptions = {
+  /**
+   * Composition-time notes (e.g. token-gated skips from
+   * `liveSourceDegradationNotes`). Merged with runtime notes from the
+   * mining `RunArtifact` — neither set overwrites the other.
+   */
   sourceDegradationNotes?: readonly string[];
 };
 
@@ -34,6 +40,9 @@ export function toSkillMiningHandoff(
     intent: artifact.intent,
     gatedClusters: artifact.gatedClusters,
     saturationStopped: artifact.saturationStopped,
-    sourceDegradationNotes: options.sourceDegradationNotes ?? [],
+    sourceDegradationNotes: mergeSourceDegradationNotes(
+      options.sourceDegradationNotes,
+      artifact.sourceDegradationNotes,
+    ),
   };
 }

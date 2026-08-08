@@ -22,6 +22,7 @@ describe("PainPointMiner.run", () => {
     expect(artifact.hollowRejections).toEqual([]);
     expect(artifact.visibleBriefs).toEqual([]);
     expect(artifact.hiddenByCompetitionFilter).toEqual([]);
+    expect(artifact.sourceDegradationNotes).toEqual([]);
     for (const item of artifact.evidence) {
       expect(item.quote.length).toBeGreaterThan(0);
       expect(item.url).toMatch(/^https?:\/\//);
@@ -72,5 +73,9 @@ describe("PainPointMiner.run", () => {
     expect(artifact.hollowRejections).toEqual([]);
     expect(artifact.visibleBriefs).toEqual([]);
     expect(artifact.hiddenByCompetitionFilter).toEqual([]);
+    expect(artifact.sourceDegradationNotes).toEqual([
+      'Signal Source "broken-before" degraded: simulated Signal Source outage',
+      'Signal Source "broken-after" degraded: another Signal Source outage',
+    ]);
   });
 });
