@@ -82,7 +82,7 @@ export function formatRunArtifact(
         `### \`${rejection.clusterId}\``,
         "",
         `- Reason: ${rejection.reason}`,
-        `- Signal Mix: Demand ${rejection.signalMix.demandSignalCount} / Incumbent ${rejection.signalMix.incumbentFrictionCount}`,
+        `- Signal Mix: Demand Signal ${rejection.signalMix.demandSignalCount} / Incumbent Friction ${rejection.signalMix.incumbentFrictionCount}`,
         "",
       );
     }
@@ -103,7 +103,7 @@ export function formatRunArtifact(
         `- **Status-quo spend**: ${brief.statusQuoSpendSignals}`,
         `- **Delivery Cost**: ${brief.deliveryCost}`,
         `- **Difficulty**: ${brief.difficulty}`,
-        `- **Signal Mix**: Demand ${brief.signalMix.demandSignalCount} / Incumbent ${brief.signalMix.incumbentFrictionCount}`,
+        `- **Signal Mix**: Demand Signal ${brief.signalMix.demandSignalCount} / Incumbent Friction ${brief.signalMix.incumbentFrictionCount}`,
         `- **Competition density**: ${brief.competitionDensity}`,
         `- **Evidence links**:`,
       );

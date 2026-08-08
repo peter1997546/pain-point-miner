@@ -17,7 +17,6 @@ export {
   formatRunArtifact,
   type ArtifactFormat,
 } from "./lib/format-run-artifact.js";
-export { signalMixFromEvidence } from "./lib/signal-mix.js";
 export type {
   AnalysisOutcome,
   AnalysisPass,

@@ -125,12 +125,7 @@ export type HollowRejection = {
 
 /** Per-cluster Analysis Pass result: Hollow rejection or Pain Point Brief. */
 export type AnalysisOutcome =
-  | {
-      status: "hollow";
-      clusterId: string;
-      reason: string;
-      signalMix: SignalMix;
-    }
+  | ({ status: "hollow" } & HollowRejection)
   | { status: "brief"; brief: Brief };
 
 /** Input to one Analysis Pass invocation — a single Candidate Cluster. */

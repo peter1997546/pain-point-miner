@@ -228,11 +228,8 @@ export function createPainPointMiner(
           });
           analysisOutcomes.push(outcome);
           if (outcome.status === "hollow") {
-            hollowRejections.push({
-              clusterId: outcome.clusterId,
-              reason: outcome.reason,
-              signalMix: outcome.signalMix,
-            });
+            const { status: _status, ...rejection } = outcome;
+            hollowRejections.push(rejection);
           } else {
             briefs.push(outcome.brief);
           }
