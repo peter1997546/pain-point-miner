@@ -7,7 +7,9 @@ import {
   createFixtureSignalSources,
   createLiveDiscoveryMiner,
   createPainPointMiner,
+  ensureParentDir,
   formatRunArtifact,
+  liveSourceDegradationNotes,
   toSkillMiningHandoff,
   type AnalysisPass,
   type ArtifactFormat,
@@ -211,7 +213,8 @@ Options:
   --live                            Live discovery (Entry Catalog + Follow-on/Store + local Embeddings)
   --format                          Output format: json|markdown (default: markdown)
   --handoff                         skill — emit condensed gated clusters for Skill Analysis Pass
-                                    (JSON only; omits full scrape evidence[])
+                                    (JSON only; omits full scrape evidence[]; --live adds
+                                    sourceDegradationNotes for skipped token-gated deepenings)
   --out                             Write to a file instead of stdout
   --theme                           Intent Theme preference note
   --product-shape                   Intent product shape preference note
@@ -294,6 +297,18 @@ function parseEmbeddingsBackend(
   );
 }
 
+/** Resolve PH token the same way `--live` composition does (for degradation notes). */
+function resolveProductHuntToken(io: CliIo): string | undefined {
+  const env = io.env ?? process.env;
+  return io.liveDiscovery?.productHuntAccessToken ?? env.PRODUCT_HUNT_TOKEN;
+}
+
+function productHuntTokenNotesInput(
+  token: string | undefined,
+): { productHuntAccessToken?: string } {
+  return token !== undefined ? { productHuntAccessToken: token } : {};
+}
+
 export async function runCli(
   argv: string[],
   io: CliIo = {},
@@ -310,10 +325,21 @@ export async function runCli(
     const miner = buildMiner(live, io);
     const artifact = await miner.run(runInput);
     const rendered = skillHandoff
-      ? `${JSON.stringify(toSkillMiningHandoff(artifact), null, 2)}\n`
+      ? `${JSON.stringify(
+          toSkillMiningHandoff(artifact, {
+            sourceDegradationNotes: live
+              ? liveSourceDegradationNotes(
+                  productHuntTokenNotesInput(resolveProductHuntToken(io)),
+                )
+              : [],
+          }),
+          null,
+          2,
+        )}\n`
       : formatRunArtifact(artifact, format);
 
     if (outPath) {
+      await ensureParentDir(outPath);
       await writeFile(outPath, rendered, "utf8");
     } else {
       stdout.write(rendered);

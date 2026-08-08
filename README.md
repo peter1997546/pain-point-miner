@@ -105,50 +105,54 @@ npm run cli -- --format json --out artifact.json \
 # Live discovery (Entry Catalog + Follow-on/Store + free/local Embeddings)
 npm run cli -- --live --format json --out artifact.json
 # Condensed Skill handoff (gatedClusters only — no full scrape evidence[])
-npm run cli -- --format json --handoff skill --out .pain-point-miner/handoff.json \
+# Real usage: always pair with --live (fixtures without --live are tests/CI only)
+npm run cli -- --live --format json --handoff skill \
+  --out .pain-point-miner/runs/<timestamp>/handoff.json \
   --theme "AI automation"
 ```
 
-## Skill (Script + per-cluster fan-out)
+## Skill (Script + per-cluster fan-out + Run Report)
 
-Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-point-miner/SKILL.md) (ADR-0009 / ADR-0011).
+Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-point-miner/SKILL.md) (ADR-0009 / ADR-0011 / ADR-0013–0015).
 
-1. Call the Script / `run` mining path (never crawl-in-chat).
-2. Fan out Analysis Pass **one gated Candidate Cluster at a time** (parallel agents OK); each step sees only that cluster’s Evidence plus Brief context — never the full scrape.
-3. Assemble Briefs / Hollow rejections; optional Competition Filter after emission.
+**Product path (Cloud Agent):**
 
-`createLlmAnalysisPass({ llm })` implements the Analysis Pass port: Hollow rejection (wish-only / platitude), Brief enrichment (Competitive Landscape with local penetration, status-quo spend, Delivery Cost as cost drivers, difficulty S/M/L, Signal Mix), and Evidence-link sanitization (never invents links). Inject a scripted `LlmClient` in tests, or `createOpenAiCompatibleLlmClient` for live runs.
+1. Interview optional Intent (Theme, product shape, constraints, hard nos, success definition) — skip-all → empty Intent.
+2. Live-mine via Script (`npm run cli -- --live --format json --handoff skill --out …/handoff.json`). Fixtures are tests-only.
+3. Fan out Analysis Pass **one gated Candidate Cluster at a time in Cursor sub-agents** (parallel OK); each step sees only that cluster’s Evidence — never the full scrape. Hosted LLM Analysis (`createLlmAnalysisPass`) is **not** the product surface (ADR-0013).
+4. Report Agent integrates outcomes with `writeSkillRunFolder` / `assembleRunReport` (uses `formatRunReport`) into a time-based run folder: `handoff.json` + `report.md`. Does not re-judge Hollow vs Brief or invent Evidence.
+5. Token-free live sources first; token-gated deepenings (e.g. Product Hunt) skip without blocking — `sourceDegradationNotes` on the handoff feed the Run Report.
 
-Programmatic adapter:
+```bash
+# Product Skill handoff (live; free/local Embeddings; notes when PH token unset)
+mkdir -p .pain-point-miner/runs/<timestamp>
+npm run cli -- --live --format json --handoff skill \
+  --out .pain-point-miner/runs/<timestamp>/handoff.json
+# After Cursor per-cluster Analysis outcomes return:
+# writeSkillRunFolder({ runDir, handoff, analysisOutcomes }) → report.md
+```
+
+Programmatic Report Agent seam (tests / scripts):
 
 ```ts
 import {
-  createPainPointMiner,
-  createSkillOrchestrator,
-  createLlmAnalysisPass,
-  createOpenAiCompatibleLlmClient,
-  createFixtureEmbeddings,
-  createFixtureSignalSources,
+  assembleRunReport,
+  prepareSkillRunFolder,
+  writeSkillRunFolder,
+  type AnalysisOutcome,
+  type SkillMiningHandoff,
 } from "pain-point-miner";
 
-const scriptMiner = createPainPointMiner({
-  signalSources: createFixtureSignalSources(),
-  embeddings: createFixtureEmbeddings(),
-  // omit analysisPass — Skill owns fan-out
+const runDir = await prepareSkillRunFolder();
+const reportMarkdown = assembleRunReport({
+  handoff, // SkillMiningHandoff from --handoff skill
+  analysisOutcomes, // from Cursor Analysis sub-agents
+  runId: runDir,
 });
-
-const skill = createSkillOrchestrator({
-  runMining: (input) => scriptMiner.run(input),
-  analysisPass: createLlmAnalysisPass({
-    llm: createOpenAiCompatibleLlmClient({
-      apiKey: process.env.OPENAI_API_KEY!,
-      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-    }),
-  }),
-});
-
-const artifact = await skill.run({});
+await writeSkillRunFolder({ runDir, handoff, analysisOutcomes });
 ```
+
+For CI fan-out mechanics only, `createSkillOrchestrator` + an injectable `AnalysisPass` double remains valid. `createLlmAnalysisPass` / OpenAI-compatible LLM clients may exist for experiments — they are not the Builder-facing Analysis path.
 
 ## Checks
 

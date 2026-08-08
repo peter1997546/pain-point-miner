@@ -145,9 +145,10 @@ export type AnalysisPassInput = {
 };
 
 /**
- * Injectable Analysis Pass port (test double or `createLlmAnalysisPass`).
- * Must be invoked once per gated cluster — never with the full scrape blob
- * or all clusters packed into one call (ADR-0011).
+ * Injectable Analysis Pass port for tests / optional experiments.
+ * Product path runs Analysis in Cursor agents (ADR-0013) — not a required
+ * hosted LLM adapter. Must be invoked once per gated cluster — never with
+ * the full scrape blob or all clusters packed into one call (ADR-0011).
  */
 export type AnalysisPass = {
   analyze(input: AnalysisPassInput): Promise<AnalysisOutcome>;
@@ -216,7 +217,8 @@ export type PainPointMinerDeps = {
   /** Optional; when omitted, Store Second Pass is skipped. */
   storeReviewSource?: StoreReviewSource;
   /**
-   * Optional Analysis Pass (test double / Skill LLM).
+   * Optional Analysis Pass (test double / experimental LLM adapter).
+   * Product Skill path runs Analysis in Cursor agents instead (ADR-0013).
    * When omitted, mining stops after Count Gate — no Briefs / Hollow judgments.
    */
   analysisPass?: AnalysisPass;
