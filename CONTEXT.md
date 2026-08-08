@@ -93,17 +93,18 @@ Rough read of build/run cost drivers for a plausible solution. Not a revenue or 
 _Avoid_: Profit estimate, TAM, ARR projection
 
 **Source Catalog** (v1):
-Reddit, Apple App Store reviews, Google Play reviews, Hacker News, Product Hunt, Indie Hackers.
-_Avoid_: G2/Capterra (v1), GitHub issues (v1), Chrome Web Store (v1)
+Cold-start Signal Sources that work without paid APIs or required tokens: Hacker News, Lobsters, Lemmy, Dev.to, and a finite Discourse forum whitelist. Store Second Pass includes Apple App Store reviews. Token-gated or Cloud-blocked channels (e.g. Product Hunt, Reddit without usable access) are not required for a valid live run.
+_Avoid_: Treating Reddit or Product Hunt as mandatory for real usage, G2/Capterra (v1), GitHub issues as Entry (v1), Chrome Web Store (v1), unpaid sources with unusably low rate limits as primary Entry
 
 **Entry Catalog** (v1):
-Cold-start before Follow-on Fetch:
-- Reddit boards (primary): `r/smallbusiness`, `r/freelance`, `r/sysadmin`, `r/webdev`, `r/sales`, `r/marketing`, `r/ecommerce`
-- Reddit query patterns (Demand-oriented): wish / tool for / why no / spreadsheet workaround / how do you handle
-- HN: Ask HN–style frustration / wish searches
-- Product Hunt & Indie Hackers: not primary cold-start; Follow-on when referenced
-- Large founder boards (e.g. Entrepreneur): deprioritized in the first wave
-_Avoid_: Hot-only firehose, competitor-subreddit sweep as the primary entry, PH/IH as main demand entry
+Cold-start before Follow-on Fetch — **free, no-token, Cloud-reachable** sources only:
+- Hacker News: Ask HN–style frustration / wish searches (Algolia)
+- Lobsters: demand-relevant listings (e.g. ask / rant / newest-style JSON listings)
+- Lemmy: public instance search for Demand-oriented queries
+- Dev.to: tag-based article listings (e.g. discuss / help)
+- Discourse: search on a **finite verified whitelist** of forum instances (not an open-ended crawl of all Discourse sites)
+Reddit is not the primary cold-start when it is blocked or credential-gated; Product Hunt & Indie Hackers are not primary Entry.
+_Avoid_: Hot-only firehose, Reddit-as-mandatory primary, PH/IH as main demand entry, inventing crawl targets from Intent, unbounded “every Discourse on the internet”
 
 **Signal Source**:
 One channel from the Source Catalog mined for Evidence.
@@ -114,8 +115,8 @@ When material points at a *specific* demand-relevant page or thread, or names a 
 _Avoid_: Intent-biased source picking, treating every “alternative to X” link as a Demand Signal
 
 **Store Second Pass**:
-App Store / Play reviews for apps *mentioned* in forum-style Evidence — secondary, often Incumbent Friction, used to enrich not to define demand.
-_Avoid_: Seed app list as the primary store strategy
+Apple App Store reviews for apps *mentioned* in forum-style Evidence — secondary, often Incumbent Friction, used to enrich not to define demand. Play Store for this catalog revision remains undecided.
+_Avoid_: Seed app list as the primary store strategy, using store reviews as the primary cold-start for Demand Signal
 
 **Brief**:
 Enriched Analysis Pass output: Pain Point + Evidence, inferred Target Market, Competitive Landscape, status-quo spend signals, Delivery Cost, difficulty S/M/L. MVP sketch optional in v1.
