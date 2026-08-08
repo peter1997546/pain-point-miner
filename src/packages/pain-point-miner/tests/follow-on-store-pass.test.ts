@@ -525,6 +525,9 @@ describe("PainPointMiner.run — Follow-on Fetch and Store Second Pass", () => {
       "seed-follow-on-mix",
       "follow-on-ok",
     ]);
+    expect(artifact.sourceDegradationNotes).toEqual([
+      `Follow-on Fetch degraded for ${brokenUrl}: simulated Follow-on Fetch outage`,
+    ]);
   });
 
   it("degrades gracefully when one Store Second Pass throws, keeping other Evidence", async () => {
@@ -584,6 +587,9 @@ describe("PainPointMiner.run — Follow-on Fetch and Store Second Pass", () => {
       "forum-notion",
       "forum-wave",
       "store-wave-ok",
+    ]);
+    expect(artifact.sourceDegradationNotes).toEqual([
+      "Store Second Pass degraded for play:notion: simulated Store Second Pass outage",
     ]);
   });
 

@@ -78,8 +78,12 @@ export {
   type ToSkillMiningHandoffOptions,
 } from "./lib/skill-mining-handoff.js";
 export {
+  followOnFetchDegradationNote,
   liveSourceDegradationNotes,
+  mergeSourceDegradationNotes,
   PRODUCT_HUNT_FOLLOW_ON_SKIPPED_NOTE,
+  signalSourceDegradationNote,
+  storeSecondPassDegradationNote,
   type LiveSourceDegradationNotesInput,
 } from "./lib/live-source-degradation-notes.js";
 export {

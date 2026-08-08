@@ -180,6 +180,13 @@ export type RunArtifact = {
   visibleBriefs: Brief[];
   /** Briefs hidden by Competition Filter; annotations remain on `briefs`. */
   hiddenByCompetitionFilter: Brief[];
+  /**
+   * Builder-facing notes when an Entry Catalog Signal Source, Follow-on Fetch,
+   * or Store Second Pass failed at the mining port but the run continued.
+   * Empty when nothing degraded. Token-gated skip notes are composed at the
+   * Skill handoff layer and merged with these (ADR-0014).
+   */
+  sourceDegradationNotes: readonly string[];
 };
 
 /** Injectable Signal Source port (fixtures in tests; live adapters later). */

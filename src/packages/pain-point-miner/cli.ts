@@ -213,8 +213,8 @@ Options:
   --live                            Live discovery (Entry Catalog + Follow-on/Store + local Embeddings)
   --format                          Output format: json|markdown (default: markdown)
   --handoff                         skill — emit condensed gated clusters for Skill Analysis Pass
-                                    (JSON only; omits full scrape evidence[]; --live adds
-                                    sourceDegradationNotes for skipped token-gated deepenings)
+                                    (JSON only; omits full scrape evidence[]; merges runtime
+                                    sourceDegradationNotes with --live token-gated skip notes)
   --out                             Write to a file instead of stdout
   --theme                           Intent Theme preference note
   --product-shape                   Intent product shape preference note

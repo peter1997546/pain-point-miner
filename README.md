@@ -121,7 +121,7 @@ Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-
 2. Live-mine via Script (`npm run cli -- --live --format json --handoff skill --out …/handoff.json`). Fixtures are tests-only.
 3. Fan out Analysis Pass **one gated Candidate Cluster at a time in Cursor sub-agents** (parallel OK); each step sees only that cluster’s Evidence — never the full scrape. Hosted LLM Analysis (`createLlmAnalysisPass`) is **not** the product surface (ADR-0013).
 4. Report Agent integrates outcomes with `writeSkillRunFolder` / `assembleRunReport` (uses `formatRunReport`) into a time-based run folder: `handoff.json` + `report.md`. Does not re-judge Hollow vs Brief or invent Evidence.
-5. Token-free live sources first; token-gated deepenings (e.g. Product Hunt) skip without blocking — `sourceDegradationNotes` on the handoff feed the Run Report.
+5. Token-free live sources first; token-gated deepenings (e.g. Product Hunt) skip without blocking, and port-level Signal Source / Follow-on / Store Second Pass failures note without voiding the run — merged `sourceDegradationNotes` on the handoff feed the Run Report.
 
 ```bash
 # Product Skill handoff (live; free/local Embeddings; notes when PH token unset)

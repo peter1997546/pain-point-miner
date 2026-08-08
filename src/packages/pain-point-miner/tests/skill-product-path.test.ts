@@ -230,6 +230,7 @@ describe("Skill handoff carries live source degradation notes", () => {
         hollowRejections: [],
         visibleBriefs: [],
         hiddenByCompetitionFilter: [],
+        sourceDegradationNotes: [],
       },
       {
         sourceDegradationNotes: liveSourceDegradationNotes({}),
