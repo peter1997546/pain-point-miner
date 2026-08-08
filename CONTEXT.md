@@ -21,8 +21,8 @@ Agent-facing orchestration that calls the Script for mining, then fans out a **p
 _Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump
 
 **Intent**:
-Optional free-text fields the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields are preference notes for the Analysis Pass only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
-_Avoid_: Intake form, requirements form, restriction sheet
+Optional free-text preference notes the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
+_Avoid_: Intake form, requirements form, restriction sheet, treating Intent as crawl config
 
 **Theme**:
 An optional broad directional preference (e.g. “AI automation”, “提升效率”). Not a use case, workflow, or Target Market.
@@ -120,3 +120,7 @@ _Avoid_: Seed app list as the primary store strategy
 **Brief**:
 Enriched Analysis Pass output: Pain Point + Evidence, inferred Target Market, Competitive Landscape, status-quo spend signals, Delivery Cost, difficulty S/M/L. MVP sketch optional in v1.
 _Avoid_: Opportunity report, idea list, ChatGPT-style market blurb
+
+**Run Report**:
+The Builder-facing polished Markdown artifact assembled after per-cluster Analysis Pass outcomes return — Briefs plus Hollow rejections, readable rather than a raw `RunArtifact` dump. Written under a time-based run folder. Produced by a Report Agent (or equivalent Skill step) that integrates sub-agent results; it does not re-judge Hollow vs Brief and does not invent Evidence.
+_Avoid_: Opportunity report, raw RunArtifact dump as the Builder deliverable, ChatGPT-style market blurb
