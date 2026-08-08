@@ -1,13 +1,11 @@
 /**
  * Optional free-text fields the Builder may fill.
  * Empty Intent is valid — documented default is `{}`.
+ * Filled fields must not whitelist or drop Signal Sources (ADR-0004 / ADR-0007).
  */
 export type Intent = {
+  /** Optional broad directional preference (e.g. "AI automation"). */
   theme?: string;
-  productShape?: string;
-  constraints?: string;
-  hardNos?: string;
-  successDefinition?: string;
 };
 
 /** Input to `PainPointMiner.run`. Omitted / `{}` uses empty Intent defaults. */
@@ -35,7 +33,7 @@ export type RunArtifact = {
 /** Injectable Signal Source port (fixtures in tests; live adapters later). */
 export type SignalSource = {
   readonly name: string;
-  collect(intent: Intent): Promise<readonly EvidenceRef[]>;
+  collect(): Promise<readonly EvidenceRef[]>;
 };
 
 export type PainPointMinerDeps = {

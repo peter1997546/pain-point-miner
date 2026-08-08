@@ -18,7 +18,8 @@ export function createPainPointMiner(
       const evidence: EvidenceRef[] = [];
 
       for (const source of deps.signalSources) {
-        const batch = await source.collect(intent);
+        // Intent is echoed on the artifact but does not select Signal Sources.
+        const batch = await source.collect();
         evidence.push(...batch);
       }
 
