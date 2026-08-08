@@ -1,4 +1,5 @@
 export { createPainPointMiner } from "./lib/create-pain-point-miner.js";
+export { createFixtureEmbeddings } from "./lib/fixture-embeddings.js";
 export {
   createFixtureSignalSources,
   defaultFixtureEvidence,
@@ -8,6 +9,8 @@ export {
   type ArtifactFormat,
 } from "./lib/format-run-artifact.js";
 export type {
+  CandidateCluster,
+  Embeddings,
   EvidenceRef,
   Intent,
   PainPointMiner,
@@ -15,4 +18,9 @@ export type {
   RunArtifact,
   RunInput,
   SignalSource,
+} from "./lib/types.js";
+export {
+  DEFAULT_COUNT_GATE_THRESHOLD,
+  DEFAULT_MEANING_SIMILARITY_THRESHOLD,
+  DEFAULT_SATURATION_STOP_K,
 } from "./lib/types.js";

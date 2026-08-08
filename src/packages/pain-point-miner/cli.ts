@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 import { writeFile } from "node:fs/promises";
 import {
+  createFixtureEmbeddings,
   createFixtureSignalSources,
   createPainPointMiner,
   formatRunArtifact,
   type ArtifactFormat,
+  type Embeddings,
   type SignalSource,
 } from "./index.js";
 
 export type CliIo = {
   signalSources?: readonly SignalSource[];
+  embeddings?: Embeddings;
   stdout?: { write(chunk: string): unknown };
 };
 
@@ -75,6 +78,7 @@ export async function runCli(
     const { format, outPath } = parseArgs(argv);
     const miner = createPainPointMiner({
       signalSources: io.signalSources ?? createFixtureSignalSources(),
+      embeddings: io.embeddings ?? createFixtureEmbeddings(),
     });
     const artifact = await miner.run({});
     const rendered = formatRunArtifact(artifact, format);

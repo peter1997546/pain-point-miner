@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  createFixtureEmbeddings,
   createPainPointMiner,
   formatRunArtifact,
 } from "../index.js";
@@ -19,6 +20,7 @@ describe("Script CLI artifact formatting", () => {
   it("emits JSON suitable for local inspection", async () => {
     const miner = createPainPointMiner({
       signalSources: createTestSignalSources(),
+      embeddings: createFixtureEmbeddings(),
     });
     const artifact = await miner.run({});
 
@@ -35,6 +37,7 @@ describe("Script CLI artifact formatting", () => {
   it("emits Markdown with quotable Evidence and links", async () => {
     const miner = createPainPointMiner({
       signalSources: createTestSignalSources(),
+      embeddings: createFixtureEmbeddings(),
     });
     const artifact = await miner.run({});
 
@@ -42,6 +45,8 @@ describe("Script CLI artifact formatting", () => {
 
     expect(markdown).toContain("# Pain Point Miner RunArtifact");
     expect(markdown).toContain("## Evidence");
+    expect(markdown).toContain("## Candidate Clusters");
+    expect(markdown).toContain("Count Gate");
     expect(markdown).toContain(knownEvidence[0]!.quote);
     expect(markdown).toContain(knownEvidence[0]!.url);
     expect(markdown).toContain(knownEvidence[1]!.quote);

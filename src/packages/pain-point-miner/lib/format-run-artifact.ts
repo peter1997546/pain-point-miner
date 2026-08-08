@@ -27,6 +27,37 @@ export function formatRunArtifact(
     lines.push("");
   }
 
+  lines.push(
+    "## Count Gate / Saturation Stop",
+    "",
+    `- Gated Candidate Clusters (analysis-ready): **${artifact.gatedClusters.length}**`,
+    `- Saturation Stopped: **${artifact.saturationStopped ? "yes" : "no"}**`,
+    "",
+    "## Candidate Clusters",
+    "",
+  );
+
+  if (artifact.candidateClusters.length === 0) {
+    lines.push("_No Candidate Clusters._", "");
+  } else {
+    for (const cluster of artifact.candidateClusters) {
+      const gateLabel = cluster.passedCountGate
+        ? "passed Count Gate"
+        : "below Count Gate (not analysis-ready)";
+      lines.push(
+        `### \`${cluster.id}\` — Evidence Count ${cluster.evidenceCount} — ${gateLabel}`,
+        "",
+      );
+      for (const item of cluster.evidence) {
+        lines.push(
+          `- \`${item.id}\` (${item.signalSource}): ${item.url}`,
+          `  > ${item.quote}`,
+        );
+      }
+      lines.push("");
+    }
+  }
+
   lines.push("## Evidence", "");
   if (artifact.evidence.length === 0) {
     lines.push("_No Evidence collected._", "");

@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { createPainPointMiner } from "../index.js";
+import { createFixtureEmbeddings, createPainPointMiner } from "../index.js";
 import { createTestSignalSources, knownEvidence } from "./fixtures.js";
 
 describe("PainPointMiner.run", () => {
   it("accepts empty Intent and returns quotable, linkable Evidence from fixture Signal Sources", async () => {
     const miner = createPainPointMiner({
       signalSources: createTestSignalSources(),
+      embeddings: createFixtureEmbeddings(),
     });
 
     const artifact = await miner.run({});
 
     expect(artifact.intent).toEqual({});
     expect(artifact.evidence).toEqual([...knownEvidence]);
+    expect(artifact.candidateClusters.length).toBeGreaterThan(0);
+    expect(artifact.gatedClusters).toEqual([]);
+    expect(artifact.saturationStopped).toBe(false);
     for (const item of artifact.evidence) {
       expect(item.quote.length).toBeGreaterThan(0);
       expect(item.url).toMatch(/^https?:\/\//);
@@ -25,6 +29,7 @@ describe("PainPointMiner.run", () => {
   it("treats omitted input the same as empty Intent with documented defaults", async () => {
     const miner = createPainPointMiner({
       signalSources: createTestSignalSources(),
+      embeddings: createFixtureEmbeddings(),
     });
 
     const artifact = await miner.run();
