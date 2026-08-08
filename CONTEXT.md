@@ -81,5 +81,5 @@ One channel from the Source Catalog mined for Evidence.
 _Avoid_: Corpus, scrape target (implementation wording)
 
 **Brief**:
-Enriched output of the Analysis Pass on a Pain Point: inferred Target Market, Competitive Landscape, demand / status-quo spend signals, Delivery Cost, rough next-build shape — still grounded in Evidence.
+Enriched output of the Analysis Pass on a Pain Point: inferred Target Market, Competitive Landscape, demand / status-quo spend signals, Delivery Cost, and a rough difficulty band (S/M/L) — still grounded in Evidence. A sketched MVP / next-build shape is optional, not required in v1.
 _Avoid_: Opportunity report, idea list, feature request, ChatGPT-style market blurb
