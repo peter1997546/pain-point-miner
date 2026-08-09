@@ -260,7 +260,7 @@ describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
     ).toBe(true);
   });
 
-  it("Reddit Evidence extracts PH/IH Follow-on URLs and store app links from post text", async () => {
+  it("Reddit Evidence extracts Reddit/PH/IH Follow-on URLs and store app links from post text", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
       if (parsed.hostname !== "arctic-shift.photon-reddit.com") {
@@ -272,7 +272,7 @@ describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
         title: "wish: better invoicing",
         subreddit: board,
         selftext:
-          "Saw https://www.producthunt.com/posts/wave-ish and https://www.indiehackers.com/post/invoice-pain plus https://apps.apple.com/us/app/wave/id999001 and https://play.google.com/store/apps/details?id=com.wave.accounting",
+          "Saw https://www.producthunt.com/posts/wave-ish and https://www.indiehackers.com/post/invoice-pain plus https://www.reddit.com/r/freelance/comments/abc123/wish_invoice/ and https://redd.it/short99 and https://apps.apple.com/us/app/wave/id999001 and https://play.google.com/store/apps/details?id=com.wave.accounting",
       });
     });
 
@@ -290,6 +290,14 @@ describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
         }),
         expect.objectContaining({
           url: "https://www.indiehackers.com/post/invoice-pain",
+          kind: "demand-signal",
+        }),
+        expect.objectContaining({
+          url: "https://www.reddit.com/r/freelance/comments/abc123/wish_invoice/",
+          kind: "demand-signal",
+        }),
+        expect.objectContaining({
+          url: "https://redd.it/short99",
           kind: "demand-signal",
         }),
       ]),

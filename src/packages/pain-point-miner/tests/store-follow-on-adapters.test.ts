@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARCTIC_SHIFT_API_BASE,
   createAppStoreReviewSource,
   createEntryCatalogSignalSources,
   createFixtureEmbeddings,
@@ -7,8 +8,10 @@ import {
   createPainPointMiner,
   createPlayStoreReviewSource,
   createProductHuntFollowOnFetcher,
+  createRedditFollowOnFetcher,
   createSourceCatalogFollowOnFetcher,
   createStoreReviewSource,
+  toArchivePermalink,
   type AdapterHttpClient,
   type EvidenceRef,
   type MentionedApp,
@@ -16,9 +19,9 @@ import {
 } from "../index.js";
 
 /**
- * Seams under test (ticket #11 / ADR-0007 / ADR-0010):
+ * Seams under test (ticket #11 / #50 / ADR-0007 / ADR-0010 / ADR-0016):
  * - StoreReviewSource.fetchReviews for App Store + Play (Store Second Pass)
- * - FollowOnFetcher.fetchPage for Product Hunt + Indie Hackers URLs
+ * - FollowOnFetcher.fetchPage for Product Hunt + Indie Hackers + Reddit (via archive)
  * - Injectable AdapterHttpClient (recordings — no live network in CI)
  * - createEntryCatalogSignalSources stays Reddit + HN only (PH/IH not cold-start)
  * - PainPointMiner.run combines forum cold start + follow-on + store through one seam
@@ -386,8 +389,25 @@ describe("Follow-on adapters (Product Hunt + Indie Hackers)", () => {
     ).resolves.toEqual([]);
   });
 
-  it("composite Follow-on routes PH and IH and leaves other URLs empty", async () => {
+  it("composite Follow-on routes Reddit (via archive), PH, and IH; leaves other URLs empty", async () => {
     const http = createScriptedAdapterHttpClient({
+      getJson(url) {
+        const parsed = new URL(url);
+        expect(parsed.origin).toBe(ARCTIC_SHIFT_API_BASE);
+        expect(parsed.pathname).toBe("/api/posts/ids");
+        expect(parsed.searchParams.get("ids")).toBe("comp99");
+        return {
+          data: [
+            {
+              id: "comp99",
+              title: "Composite Reddit deepen",
+              selftext: "Archive path, not live reddit.com",
+              subreddit: "webdev",
+              permalink: "/r/webdev/comments/comp99/composite/",
+            },
+          ],
+        };
+      },
       postJson() {
         return {
           data: {
@@ -418,6 +438,9 @@ describe("Follow-on adapters (Product Hunt + Indie Hackers)", () => {
       productHuntAccessToken: "tok",
     });
 
+    const reddit = await followOn.fetchPage(
+      "https://www.reddit.com/r/webdev/comments/comp99/composite/",
+    );
     const ph = await followOn.fetchPage(
       "https://www.producthunt.com/posts/sh-thing",
     );
@@ -428,9 +451,216 @@ describe("Follow-on adapters (Product Hunt + Indie Hackers)", () => {
       "https://news.ycombinator.com/item?id=99",
     );
 
+    expect(reddit[0]!.signalSource).toBe("reddit");
+    expect(reddit[0]!.archivePermalink).toBe(toArchivePermalink("comp99"));
+    expect(http.getJsonUrls[0]).toContain("/api/posts/ids");
+    expect(http.getJsonUrls[0]).toContain("arctic-shift.photon-reddit.com");
+    expect(http.getJsonUrls[0]).not.toMatch(/https?:\/\/(www\.)?reddit\.com\//);
     expect(ph[0]!.signalSource).toBe("product-hunt");
     expect(ih[0]!.signalSource).toBe("indie-hackers");
     expect(other).toEqual([]);
+  });
+});
+
+describe("Follow-on adapters (Reddit via archive)", () => {
+  it("deepens a Reddit post URL through Arctic Shift ids lookup, not live reddit.com", async () => {
+    const http = createScriptedAdapterHttpClient({
+      getJson(url) {
+        const parsed = new URL(url);
+        expect(parsed.origin).toBe(ARCTIC_SHIFT_API_BASE);
+        expect(parsed.pathname).toBe("/api/posts/ids");
+        expect(parsed.searchParams.get("ids")).toBe("abc123");
+        return {
+          data: [
+            {
+              id: "abc123",
+              title: "wish: invoice follow-up without spreadsheets",
+              selftext: "Still chasing clients every Friday.",
+              subreddit: "freelance",
+              permalink: "/r/freelance/comments/abc123/wish_invoice/",
+            },
+          ],
+        };
+      },
+    });
+
+    const followOn = createRedditFollowOnFetcher({ http });
+    const evidence = await followOn.fetchPage(
+      "https://www.reddit.com/r/freelance/comments/abc123/wish_invoice/",
+    );
+
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]!.signalSource).toBe("reddit");
+    expect(evidence[0]!.signalKind).toBe("demand-signal");
+    expect(evidence[0]!.quote).toContain("chasing clients every Friday");
+    expect(evidence[0]!.url).toBe(
+      "https://www.reddit.com/r/freelance/comments/abc123/wish_invoice/",
+    );
+    expect(evidence[0]!.archivePermalink).toBe(
+      toArchivePermalink(
+        "https://www.reddit.com/r/freelance/comments/abc123/wish_invoice/",
+      ),
+    );
+    expect(http.getJsonUrls).toHaveLength(1);
+    expect(http.getJsonUrls[0]).toContain("arctic-shift.photon-reddit.com");
+    expect(http.getJsonUrls[0]).not.toMatch(/https?:\/\/(www\.)?reddit\.com\//);
+  });
+
+  it("deepens a Reddit comment permalink via comments/ids with Archive Permalink", async () => {
+    const http = createScriptedAdapterHttpClient({
+      getJson(url) {
+        const parsed = new URL(url);
+        expect(parsed.pathname).toBe("/api/comments/ids");
+        expect(parsed.searchParams.get("ids")).toBe("def456");
+        return {
+          data: [
+            {
+              id: "def456",
+              body: "The spreadsheet workaround is killing me.",
+              subreddit: "smallbusiness",
+              link_id: "t3_post99",
+              permalink:
+                "/r/smallbusiness/comments/post99/thread/def456/",
+            },
+          ],
+        };
+      },
+    });
+
+    const followOn = createRedditFollowOnFetcher({ http });
+    const evidence = await followOn.fetchPage(
+      "https://old.reddit.com/r/smallbusiness/comments/post99/thread/def456/",
+    );
+
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]!.id).toBe("reddit-def456");
+    expect(evidence[0]!.quote).toContain("spreadsheet workaround");
+    expect(evidence[0]!.url).toBe(
+      "https://www.reddit.com/r/smallbusiness/comments/post99/thread/def456/",
+    );
+    expect(evidence[0]!.archivePermalink).toBe(
+      toArchivePermalink("t1_def456"),
+    );
+  });
+
+  it("accepts redd.it short links as Follow-on targets", async () => {
+    const http = createScriptedAdapterHttpClient({
+      getJson(url) {
+        expect(new URL(url).searchParams.get("ids")).toBe("short99");
+        return {
+          data: [
+            {
+              id: "short99",
+              title: "how do you handle late invoices?",
+              selftext: "",
+              subreddit: "freelance",
+              permalink: "/r/freelance/comments/short99/late/",
+            },
+          ],
+        };
+      },
+    });
+
+    const followOn = createRedditFollowOnFetcher({ http });
+    const evidence = await followOn.fetchPage("https://redd.it/short99");
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]!.archivePermalink).toBe(toArchivePermalink("short99"));
+  });
+
+  it("ignores non-Reddit URLs without calling the archive", async () => {
+    const http = createScriptedAdapterHttpClient({
+      getJson() {
+        throw new Error("should not call archive for non-Reddit URLs");
+      },
+    });
+    const followOn = createRedditFollowOnFetcher({ http });
+    await expect(
+      followOn.fetchPage("https://www.indiehackers.com/post/x"),
+    ).resolves.toEqual([]);
+    expect(http.getJsonUrls).toEqual([]);
+  });
+
+  it("degrades with a throw when archive lookup is missing or fails", async () => {
+    const missing = createScriptedAdapterHttpClient({
+      getJson() {
+        return { data: [] };
+      },
+    });
+    await expect(
+      createRedditFollowOnFetcher({ http: missing }).fetchPage(
+        "https://www.reddit.com/r/webdev/comments/miss01/gone/",
+      ),
+    ).rejects.toThrow(/Reddit \(via archive\).*miss01|missing|unavailable/i);
+
+    const failed = createScriptedAdapterHttpClient({
+      getJson() {
+        throw new Error("HTTP 429 for archive");
+      },
+    });
+    await expect(
+      createRedditFollowOnFetcher({ http: failed }).fetchPage(
+        "https://www.reddit.com/r/webdev/comments/rate01/limited/",
+      ),
+    ).rejects.toThrow(/Reddit \(via archive\)/);
+  });
+
+  it("run notes Reddit Follow-on archive degradation without crashing", async () => {
+    const seed: EvidenceRef = {
+      id: "hn-seed-reddit-follow-on",
+      quote: "Someone linked a thread about this",
+      url: "https://news.ycombinator.com/item?id=1",
+      signalSource: "hacker-news",
+      followOnTargets: [
+        {
+          url: "https://www.reddit.com/r/freelance/comments/gone99/missing/",
+          kind: "demand-signal",
+        },
+        {
+          url: "https://www.indiehackers.com/post/still-works",
+          kind: "demand-signal",
+        },
+      ],
+    };
+
+    const http = createScriptedAdapterHttpClient({
+      getJson() {
+        return { data: [] };
+      },
+      getText() {
+        return `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(
+          {
+            props: {
+              pageProps: {
+                post: {
+                  id: "ih-ok",
+                  title: "Still works",
+                  body: "IH deepen survived archive miss",
+                },
+              },
+            },
+          },
+        )}</script></html>`;
+      },
+    });
+
+    const miner = createPainPointMiner({
+      signalSources: [sourceFrom("hacker-news", [seed])],
+      embeddings: createFixtureEmbeddings(),
+      followOnFetcher: createSourceCatalogFollowOnFetcher({ http }),
+    });
+
+    const artifact = await miner.run({});
+    expect(
+      artifact.evidence.some((item) => item.signalSource === "indie-hackers"),
+    ).toBe(true);
+    expect(
+      artifact.sourceDegradationNotes.some(
+        (note) =>
+          note.includes("Follow-on Fetch degraded") &&
+          note.includes("gone99") &&
+          note.includes("Reddit (via archive)"),
+      ),
+    ).toBe(true);
   });
 });
 

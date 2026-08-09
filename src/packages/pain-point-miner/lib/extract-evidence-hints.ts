@@ -4,6 +4,11 @@ const PRODUCT_HUNT_URL_RE =
   /https?:\/\/(?:www\.)?producthunt\.com\/posts\/[A-Za-z0-9._-]+/gi;
 const INDIE_HACKERS_URL_RE =
   /https?:\/\/(?:www\.)?indiehackers\.com\/(?:post|product)\/[A-Za-z0-9._-]+/gi;
+/** Concrete Reddit thread / comment permalinks (not subreddit homepages). */
+const REDDIT_THREAD_URL_RE =
+  /https?:\/\/(?:www\.|old\.|np\.|new\.)?reddit\.com\/r\/[A-Za-z0-9_]+\/comments\/[A-Za-z0-9]+(?:\/[^\s"'<>]*)?/gi;
+const REDDIT_SHORT_URL_RE =
+  /https?:\/\/(?:www\.)?redd\.it\/[A-Za-z0-9]+/gi;
 const APP_STORE_ID_RE =
   /https?:\/\/(?:apps|itunes)\.apple\.com\/[^\s"']*?\/id(\d+)/gi;
 const PLAY_PACKAGE_RE =
@@ -23,8 +28,8 @@ function uniqueUrls(matches: Iterable<string>): string[] {
 }
 
 /**
- * Pull concrete Follow-on URLs (PH / IH) and store app ids out of free text
- * so live Entry Catalog Evidence can seed Follow-on + Store Second Pass.
+ * Pull concrete Follow-on URLs (Reddit / PH / IH) and store app ids out of
+ * free text so live Entry Catalog Evidence can seed Follow-on + Store Second Pass.
  */
 export function extractEvidenceHints(text: string): {
   followOnTargets: FollowOnTarget[];
@@ -35,6 +40,12 @@ export function extractEvidenceHints(text: string): {
     followOnTargets.push({ url, kind: "alternative-review" satisfies FollowOnKind });
   }
   for (const url of uniqueUrls(text.match(INDIE_HACKERS_URL_RE) ?? [])) {
+    followOnTargets.push({ url, kind: "demand-signal" });
+  }
+  for (const url of uniqueUrls([
+    ...(text.match(REDDIT_THREAD_URL_RE) ?? []),
+    ...(text.match(REDDIT_SHORT_URL_RE) ?? []),
+  ])) {
     followOnTargets.push({ url, kind: "demand-signal" });
   }
 

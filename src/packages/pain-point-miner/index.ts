@@ -61,6 +61,7 @@ export { createPlayStoreReviewSource } from "./lib/play-store-review-source.js";
 export { createStoreReviewSource } from "./lib/store-review-source.js";
 export { createProductHuntFollowOnFetcher } from "./lib/product-hunt-follow-on.js";
 export { createIndieHackersFollowOnFetcher } from "./lib/indie-hackers-follow-on.js";
+export { createRedditFollowOnFetcher } from "./lib/reddit-follow-on.js";
 export { createSourceCatalogFollowOnFetcher } from "./lib/source-catalog-follow-on.js";
 export {
   formatRunArtifact,
