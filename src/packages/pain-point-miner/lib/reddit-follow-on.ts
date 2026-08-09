@@ -1,6 +1,9 @@
 import {
   ARCTIC_SHIFT_API_BASE,
+  isRedditHost,
+  parseRedditThingRef,
   toArchivePermalink,
+  type RedditThingRef,
 } from "./archive-permalink.js";
 import { withExtractedHints } from "./extract-evidence-hints.js";
 import type { JsonHttpClient } from "./json-http-client.js";
@@ -11,68 +14,6 @@ export type RedditFollowOnDeps = {
   http: JsonHttpClient;
 };
 
-type RedditThingRef =
-  | { kind: "post"; id: string }
-  | { kind: "comment"; id: string };
-
-const REDDIT_ID_RE = /^[A-Za-z0-9]+$/;
-
-function hostIsReddit(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return (
-    host === "reddit.com" ||
-    host === "www.reddit.com" ||
-    host === "old.reddit.com" ||
-    host === "np.reddit.com" ||
-    host === "new.reddit.com"
-  );
-}
-
-function hostIsRedditShort(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return host === "redd.it" || host === "www.redd.it";
-}
-
-/**
- * Resolve a concrete Reddit post/comment identity from a Follow-on URL.
- * Non-thread Reddit URLs and non-Reddit hosts return undefined.
- */
-function redditThingRefFromUrl(url: string): RedditThingRef | undefined {
-  let parsed: URL;
-  try {
-    parsed = new URL(url.trim());
-  } catch {
-    return undefined;
-  }
-
-  if (hostIsRedditShort(parsed.hostname)) {
-    const id = parsed.pathname.replace(/^\/+|\/+$/g, "").split("/")[0];
-    if (!id || !REDDIT_ID_RE.test(id)) {
-      return undefined;
-    }
-    return { kind: "post", id };
-  }
-
-  if (!hostIsReddit(parsed.hostname)) {
-    return undefined;
-  }
-
-  const parts = parsed.pathname.split("/").filter((part) => part.length > 0);
-  const commentsIdx = parts.indexOf("comments");
-  if (commentsIdx === -1) {
-    return undefined;
-  }
-  const postId = parts[commentsIdx + 1];
-  if (!postId || !REDDIT_ID_RE.test(postId)) {
-    return undefined;
-  }
-  const commentId = parts[commentsIdx + 3];
-  if (commentId && REDDIT_ID_RE.test(commentId)) {
-    return { kind: "comment", id: commentId };
-  }
-  return { kind: "post", id: postId };
-}
-
 function archiveIdsLookupUrl(thing: RedditThingRef): string {
   const path =
     thing.kind === "post" ? "/api/posts/ids" : "/api/comments/ids";
@@ -81,26 +22,44 @@ function archiveIdsLookupUrl(thing: RedditThingRef): string {
   return url.toString();
 }
 
-function canonicalFromPermalink(
-  permalink: string | undefined,
-  fallbackUrl: string,
+/**
+ * Builder-facing canonical Reddit URL — always www.reddit.com when possible
+ * (CONTEXT.md Evidence), never leave a redd.it short link as Evidence.url.
+ */
+function canonicalRedditUrl(
+  row: Record<string, unknown>,
+  thing: RedditThingRef,
+  requestUrl: string,
 ): string {
+  const permalink = asString(row.permalink);
   if (permalink) {
     const path = permalink.startsWith("/") ? permalink : `/${permalink}`;
     return `https://www.reddit.com${path}`;
   }
-  try {
-    const parsed = new URL(fallbackUrl);
-    if (hostIsRedditShort(parsed.hostname)) {
-      return fallbackUrl;
+
+  const subreddit = asString(row.subreddit);
+  if (thing.kind === "comment") {
+    const linkId = asString(row.link_id)?.replace(/^t3_/i, "");
+    if (subreddit && linkId) {
+      return `https://www.reddit.com/r/${subreddit}/comments/${linkId}/_/${thing.id}/`;
     }
-    if (hostIsReddit(parsed.hostname)) {
+  } else if (subreddit) {
+    return `https://www.reddit.com/r/${subreddit}/comments/${thing.id}/`;
+  }
+
+  try {
+    const parsed = new URL(requestUrl);
+    if (isRedditHost(parsed.hostname)) {
       return `https://www.reddit.com${parsed.pathname}${parsed.search}`;
     }
   } catch {
-    // keep fallback
+    // fall through
   }
-  return fallbackUrl;
+
+  if (thing.kind === "comment") {
+    return `https://www.reddit.com/comments/${thing.id}/`;
+  }
+  return `https://www.reddit.com/comments/${thing.id}/`;
 }
 
 function evidenceFromArchiveRow(
@@ -117,12 +76,13 @@ function evidenceFromArchiveRow(
     return undefined;
   }
 
+  const url = canonicalRedditUrl(row, thing, requestUrl);
+
   if (thing.kind === "comment") {
     const body = asString(row.body);
     if (!body) {
       return undefined;
     }
-    const url = canonicalFromPermalink(asString(row.permalink), requestUrl);
     return withExtractedHints({
       id: `reddit-${id}`,
       quote: body,
@@ -139,7 +99,6 @@ function evidenceFromArchiveRow(
   }
   const selftext = asString(row.selftext);
   const quote = selftext ? `${title}\n\n${selftext}` : title;
-  const url = canonicalFromPermalink(asString(row.permalink), requestUrl);
   return withExtractedHints({
     id: `reddit-${id}`,
     quote,
@@ -172,8 +131,9 @@ export function createRedditFollowOnFetcher(
 ): FollowOnFetcher {
   return {
     async fetchPage(url: string) {
-      const thing = redditThingRefFromUrl(url);
-      if (!thing) {
+      const thing = parseRedditThingRef(url);
+      // Follow-on only deepens concrete URL targets (not bare ids / fullnames).
+      if (!thing || !/^https?:\/\//i.test(url.trim())) {
         return [];
       }
 

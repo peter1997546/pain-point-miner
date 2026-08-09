@@ -287,7 +287,7 @@ describe("Store Second Pass adapters (App Store + Play)", () => {
   });
 });
 
-describe("Follow-on adapters (Product Hunt + Indie Hackers)", () => {
+describe("Follow-on adapters (Product Hunt + Indie Hackers + Reddit)", () => {
   it("Product Hunt Follow-on fetches a referenced post by slug via GraphQL", async () => {
     const http = createScriptedAdapterHttpClient({
       postJson(url, body, init) {
@@ -543,7 +543,7 @@ describe("Follow-on adapters (Reddit via archive)", () => {
     );
   });
 
-  it("accepts redd.it short links as Follow-on targets", async () => {
+  it("accepts redd.it short links as Follow-on targets with canonical URL", async () => {
     const http = createScriptedAdapterHttpClient({
       getJson(url) {
         expect(new URL(url).searchParams.get("ids")).toBe("short99");
@@ -564,7 +564,36 @@ describe("Follow-on adapters (Reddit via archive)", () => {
     const followOn = createRedditFollowOnFetcher({ http });
     const evidence = await followOn.fetchPage("https://redd.it/short99");
     expect(evidence).toHaveLength(1);
+    expect(evidence[0]!.url).toBe(
+      "https://www.reddit.com/r/freelance/comments/short99/late/",
+    );
+    expect(evidence[0]!.url).not.toContain("redd.it");
     expect(evidence[0]!.archivePermalink).toBe(toArchivePermalink("short99"));
+  });
+
+  it("builds a canonical www.reddit.com URL when archive omits permalink", async () => {
+    const http = createScriptedAdapterHttpClient({
+      getJson() {
+        return {
+          data: [
+            {
+              id: "noperm1",
+              title: "wish: less spreadsheet chasing",
+              selftext: "Need a real tool",
+              subreddit: "smallbusiness",
+            },
+          ],
+        };
+      },
+    });
+
+    const followOn = createRedditFollowOnFetcher({ http });
+    const evidence = await followOn.fetchPage("https://redd.it/noperm1");
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]!.url).toBe(
+      "https://www.reddit.com/r/smallbusiness/comments/noperm1/",
+    );
+    expect(evidence[0]!.archivePermalink).toBe(toArchivePermalink("noperm1"));
   });
 
   it("ignores non-Reddit URLs without calling the archive", async () => {

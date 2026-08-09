@@ -15,6 +15,11 @@ export const ARCTIC_SHIFT_API_BASE =
 const REDDIT_ID_RE = /^[A-Za-z0-9]+$/;
 const FULLNAME_RE = /^(t[13])_([A-Za-z0-9]+)$/i;
 
+/** Concrete Reddit post or comment identity resolved from a URL / id. */
+export type RedditThingRef =
+  | { kind: "post"; id: string }
+  | { kind: "comment"; id: string };
+
 function archivePermalinkForFullname(fullname: string): string {
   const url = new URL(ARCTIC_SHIFT_SEARCH_UI_BASE);
   url.searchParams.set("fun", "ids");
@@ -22,7 +27,7 @@ function archivePermalinkForFullname(fullname: string): string {
   return url.toString();
 }
 
-function hostIsReddit(hostname: string): boolean {
+export function isRedditHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   return (
     host === "reddit.com" ||
@@ -33,17 +38,19 @@ function hostIsReddit(hostname: string): boolean {
   );
 }
 
-function hostIsRedditShort(hostname: string): boolean {
+export function isRedditShortHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   return host === "redd.it" || host === "www.redd.it";
 }
 
 /**
- * Convert a canonical Reddit URL, redd.it short link, bare fullname (`t3_` /
- * `t1_`), or bare post id into an Archive Permalink.
- * Returns `undefined` when the input is not a recognizable Reddit identity.
+ * Resolve a concrete Reddit post/comment identity from a URL, fullname, or
+ * bare post id. Returns undefined when the input is not a recognizable
+ * thread/comment identity (e.g. subreddit homepage).
  */
-export function toArchivePermalink(redditUrlOrId: string): string | undefined {
+export function parseRedditThingRef(
+  redditUrlOrId: string,
+): RedditThingRef | undefined {
   const trimmed = redditUrlOrId.trim();
   if (!trimmed) {
     return undefined;
@@ -53,11 +60,11 @@ export function toArchivePermalink(redditUrlOrId: string): string | undefined {
   if (asFullname) {
     const kind = asFullname[1]!.toLowerCase();
     const id = asFullname[2]!;
-    return archivePermalinkForFullname(`${kind}_${id}`);
+    return kind === "t1" ? { kind: "comment", id } : { kind: "post", id };
   }
 
   if (REDDIT_ID_RE.test(trimmed) && !trimmed.includes("://")) {
-    return archivePermalinkForFullname(`t3_${trimmed}`);
+    return { kind: "post", id: trimmed };
   }
 
   let parsed: URL;
@@ -67,15 +74,15 @@ export function toArchivePermalink(redditUrlOrId: string): string | undefined {
     return undefined;
   }
 
-  if (hostIsRedditShort(parsed.hostname)) {
+  if (isRedditShortHost(parsed.hostname)) {
     const id = parsed.pathname.replace(/^\/+|\/+$/g, "").split("/")[0];
     if (!id || !REDDIT_ID_RE.test(id)) {
       return undefined;
     }
-    return archivePermalinkForFullname(`t3_${id}`);
+    return { kind: "post", id };
   }
 
-  if (!hostIsReddit(parsed.hostname)) {
+  if (!isRedditHost(parsed.hostname)) {
     return undefined;
   }
 
@@ -91,7 +98,22 @@ export function toArchivePermalink(redditUrlOrId: string): string | undefined {
   }
   const commentId = parts[commentsIdx + 3];
   if (commentId && REDDIT_ID_RE.test(commentId)) {
-    return archivePermalinkForFullname(`t1_${commentId}`);
+    return { kind: "comment", id: commentId };
   }
-  return archivePermalinkForFullname(`t3_${postId}`);
+  return { kind: "post", id: postId };
+}
+
+/**
+ * Convert a canonical Reddit URL, redd.it short link, bare fullname (`t3_` /
+ * `t1_`), or bare post id into an Archive Permalink.
+ * Returns `undefined` when the input is not a recognizable Reddit identity.
+ */
+export function toArchivePermalink(redditUrlOrId: string): string | undefined {
+  const thing = parseRedditThingRef(redditUrlOrId);
+  if (!thing) {
+    return undefined;
+  }
+  const fullname =
+    thing.kind === "comment" ? `t1_${thing.id}` : `t3_${thing.id}`;
+  return archivePermalinkForFullname(fullname);
 }
