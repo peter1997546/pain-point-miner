@@ -170,4 +170,80 @@ describe("formatRunReport — Seam C Run Report Markdown", () => {
     expect(markdown).not.toContain(invoiceEvidence.quote);
     expect(markdown).not.toContain(invoiceEvidence.url);
   });
+
+  it("emits Archive Permalink for Reddit Evidence (not only live reddit.com) and keeps quote association", () => {
+    const archive =
+      "https://arctic-shift.photon-reddit.com/search?fun=ids&ids=t3_fixture1";
+    const canonical =
+      "https://www.reddit.com/r/freelance/comments/fixture1/invoice_chase/";
+    const redditEvidence: EvidenceRef = {
+      id: "reddit-archive-1",
+      quote:
+        "I wish there was a tool that tracked client invoices and chased late payments.",
+      url: canonical,
+      archivePermalink: archive,
+      signalSource: "reddit",
+    };
+    const sample = brief({
+      evidenceLinks: [canonical],
+    });
+
+    const markdown = formatRunReport({
+      briefs: [sample],
+      hollowRejections: [],
+      meta: {
+        runId: "run-archive-1",
+        intent: {},
+        saturationStopped: false,
+      },
+      evidence: [redditEvidence],
+    });
+
+    expect(markdown).toContain(archive);
+    expect(markdown).toContain(`Canonical: ${canonical}`);
+    expect(markdown).toContain(redditEvidence.quote);
+    // Archive Permalink must appear as the openable Evidence link, not only
+    // a live reddit.com URL when an Archive Permalink exists on Evidence.
+    const evidenceSection = markdown.slice(
+      markdown.indexOf("**Evidence**"),
+      markdown.indexOf("## Hollow"),
+    );
+    expect(evidenceSection).toMatch(
+      new RegExp(`^-\\s+${archive.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "m"),
+    );
+  });
+
+  it("associates quotes when Brief evidenceLinks already use the Archive Permalink", () => {
+    const archive =
+      "https://arctic-shift.photon-reddit.com/search?fun=ids&ids=t3_fixture2";
+    const canonical =
+      "https://www.reddit.com/r/webdev/comments/fixture2/slug/";
+    const redditEvidence: EvidenceRef = {
+      id: "reddit-archive-2",
+      quote: "Still stuck in a spreadsheet workaround for deploys.",
+      url: canonical,
+      archivePermalink: archive,
+      signalSource: "reddit",
+    };
+    const sample = brief({
+      evidenceLinks: [archive],
+      clusterId: "cluster-deploy",
+      painPointSummary: "Deploy spreadsheet pain",
+    });
+
+    const markdown = formatRunReport({
+      briefs: [sample],
+      hollowRejections: [],
+      meta: {
+        runId: "run-archive-2",
+        intent: {},
+        saturationStopped: false,
+      },
+      evidence: [redditEvidence],
+    });
+
+    expect(markdown).toContain(archive);
+    expect(markdown).toContain(redditEvidence.quote);
+    expect(markdown).toContain(`Canonical: ${canonical}`);
+  });
 });

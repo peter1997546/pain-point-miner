@@ -1,9 +1,10 @@
 /**
- * Entry Catalog v1 cold-start targets (ADR-0010 / CONTEXT.md).
- * Product Hunt and Indie Hackers are Follow-on only — not listed here.
+ * Entry Catalog v1 cold-start targets (ADR-0010 / ADR-0016 / CONTEXT.md).
+ * Reddit boards/queries are mined via Reddit (via archive); Product Hunt and
+ * Indie Hackers are Follow-on only — not listed here.
  */
 
-/** Reddit boards mined in the first cold-start wave. */
+/** Reddit boards mined in the first cold-start wave (via archive). */
 export const ENTRY_CATALOG_REDDIT_BOARDS = [
   "smallbusiness",
   "freelance",

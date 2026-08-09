@@ -174,6 +174,43 @@ describe("Skill run folder — handoff + Run Report via formatter", () => {
     expect(markdown).not.toContain("## Candidate Clusters");
   });
 
+  it("assembles Archive Permalinks for Reddit Evidence when present on handoff clusters", () => {
+    const canonical =
+      "https://www.reddit.com/r/freelance/comments/inv1/invoice/";
+    const archive =
+      "https://arctic-shift.photon-reddit.com/search?fun=ids&ids=t3_inv1";
+    const items = [
+      evidence({
+        id: "inv-1",
+        quote: "I chase unpaid invoices in a spreadsheet every Friday",
+        url: canonical,
+        archivePermalink: archive,
+        signalKind: "demand-signal",
+      }),
+    ];
+    const cluster: CandidateCluster = {
+      id: "cluster-invoice",
+      evidence: items,
+      evidenceCount: items.length,
+      passedCountGate: true,
+      signalMix: { demandSignalCount: 1, incumbentFrictionCount: 0 },
+    };
+    const markdown = assembleRunReport({
+      handoff: handoff({ gatedClusters: [cluster] }),
+      analysisOutcomes: [
+        {
+          status: "brief",
+          brief: brief({ evidenceLinks: [canonical] }),
+        },
+      ],
+      runId: "run-archive-assemble",
+    });
+
+    expect(markdown).toContain(archive);
+    expect(markdown).toContain(`Canonical: ${canonical}`);
+    expect(markdown).toContain(items[0]!.quote);
+  });
+
   it("writes handoff.json and report.md under the time-based run folder", async () => {
     const root = await mkdtemp(join(tmpdir(), "ppm-skill-run-"));
     tempDirs.push(root);

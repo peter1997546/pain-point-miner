@@ -52,6 +52,10 @@ export {
   type JsonHttpClient,
 } from "./lib/json-http-client.js";
 export { createRedditSignalSource } from "./lib/reddit-signal-source.js";
+export {
+  ARCTIC_SHIFT_API_BASE,
+  toArchivePermalink,
+} from "./lib/archive-permalink.js";
 export { createAppStoreReviewSource } from "./lib/app-store-review-source.js";
 export { createPlayStoreReviewSource } from "./lib/play-store-review-source.js";
 export { createStoreReviewSource } from "./lib/store-review-source.js";

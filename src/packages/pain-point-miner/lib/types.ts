@@ -79,6 +79,12 @@ export type EvidenceRef = {
   url: string;
   signalSource: string;
   /**
+   * Builder-openable Archive Permalink when the live Signal Source URL is not
+   * a reliable product-path open target (ADR-0016). For Reddit (via archive),
+   * derived from the canonical Reddit URL / id — not invented.
+   */
+  archivePermalink?: string;
+  /**
    * Optional structural clustering key when the crawler knows a shared
    * complaint identity (e.g. mentioned app id, normalized topic id).
    * Same key assists merges together with meaning similarity — it is not a

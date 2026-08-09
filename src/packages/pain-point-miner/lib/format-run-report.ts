@@ -56,20 +56,80 @@ function formatIntent(intent: Intent): string[] {
   return lines;
 }
 
-function evidenceByUrl(
+type EvidenceLookup = {
+  byUrl: Map<string, EvidenceRef>;
+  byArchivePermalink: Map<string, EvidenceRef>;
+};
+
+function evidenceLookup(
   evidence: readonly EvidenceRef[] | undefined,
-): Map<string, EvidenceRef> {
-  const map = new Map<string, EvidenceRef>();
+): EvidenceLookup {
+  const byUrl = new Map<string, EvidenceRef>();
+  const byArchivePermalink = new Map<string, EvidenceRef>();
   for (const item of evidence ?? []) {
-    map.set(item.url, item);
+    byUrl.set(item.url, item);
+    if (item.archivePermalink) {
+      byArchivePermalink.set(item.archivePermalink, item);
+    }
   }
-  return map;
+  return { byUrl, byArchivePermalink };
+}
+
+function resolveEvidence(
+  link: string,
+  lookup: EvidenceLookup,
+): EvidenceRef | undefined {
+  return lookup.byUrl.get(link) ?? lookup.byArchivePermalink.get(link);
+}
+
+/**
+ * Emit Builder-facing Evidence links. When an Archive Permalink is present on
+ * matching Reddit Evidence, it is required in the deliverable (ADR-0016);
+ * the canonical Reddit URL may also appear, labeled for distinguishability.
+ * Quote association resolves via canonical URL or Archive Permalink.
+ */
+function formatEvidenceLinks(
+  brief: Brief,
+  lookup: EvidenceLookup,
+): string[] {
+  const lines: string[] = [];
+  const emittedOpenLinks = new Set<string>();
+  const emittedCanonicalUrls = new Set<string>();
+
+  for (const link of brief.evidenceLinks) {
+    const match = resolveEvidence(link, lookup);
+    if (!match) {
+      if (!emittedOpenLinks.has(link)) {
+        emittedOpenLinks.add(link);
+        lines.push(`- ${link}`);
+      }
+      continue;
+    }
+
+    const openLink = match.archivePermalink ?? match.url;
+    if (emittedOpenLinks.has(openLink)) {
+      continue;
+    }
+    emittedOpenLinks.add(openLink);
+    lines.push(`- ${openLink}`);
+    if (
+      match.archivePermalink &&
+      match.url !== match.archivePermalink &&
+      !emittedCanonicalUrls.has(match.url)
+    ) {
+      emittedCanonicalUrls.add(match.url);
+      lines.push(`  - Canonical: ${match.url}`);
+    }
+    lines.push(`  > ${match.quote}`);
+  }
+
+  return lines;
 }
 
 function formatBriefSection(
   brief: Brief,
   index: number,
-  evidenceByUrlMap: Map<string, EvidenceRef>,
+  lookup: EvidenceLookup,
 ): string[] {
   const lines: string[] = [
     `### ${index + 1}. \`${brief.clusterId}\` — ${brief.painPointSummary}`,
@@ -94,14 +154,7 @@ function formatBriefSection(
     return lines;
   }
 
-  for (const link of brief.evidenceLinks) {
-    const match = evidenceByUrlMap.get(link);
-    lines.push(`- ${link}`);
-    if (match) {
-      lines.push(`  > ${match.quote}`);
-    }
-  }
-  lines.push("");
+  lines.push(...formatEvidenceLinks(brief, lookup), "");
   return lines;
 }
 
@@ -121,7 +174,7 @@ function formatHollowSection(rejection: HollowRejection): string[] {
  */
 export function formatRunReport(input: FormatRunReportInput): string {
   const { briefs, hollowRejections, meta } = input;
-  const evidenceByUrlMap = evidenceByUrl(input.evidence);
+  const lookup = evidenceLookup(input.evidence);
   const notes = meta.sourceDegradationNotes ?? [];
 
   const lines: string[] = [
@@ -164,7 +217,7 @@ export function formatRunReport(input: FormatRunReportInput): string {
     lines.push("_No Pain Point Briefs._", "");
   } else {
     for (const [index, item] of briefs.entries()) {
-      lines.push(...formatBriefSection(item, index, evidenceByUrlMap));
+      lines.push(...formatBriefSection(item, index, lookup));
     }
   }
 
