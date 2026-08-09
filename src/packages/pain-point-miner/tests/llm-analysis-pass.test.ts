@@ -127,6 +127,13 @@ describe("LLM Analysis Pass (Hollow + Brief enrichment)", () => {
     expect(ANALYSIS_PASS_SYSTEM_PROMPT).toMatch(/do not invent Evidence/i);
   });
 
+  it("encodes Archive Permalink guidance for Reddit Brief evidenceLinks (ADR-0016)", () => {
+    expect(ANALYSIS_PASS_SYSTEM_PROMPT).toMatch(/Archive Permalink/i);
+    expect(ANALYSIS_PASS_SYSTEM_PROMPT).toMatch(
+      /evidenceLinks[\s\S]*Archive Permalink|Archive Permalink[\s\S]*evidenceLinks/i,
+    );
+  });
+
   it("fails closed when a Brief response omits required enrichment fields", async () => {
     const real = gatedCluster(
       "cluster-incomplete",
@@ -372,6 +379,101 @@ describe("LLM Analysis Pass (Hollow + Brief enrichment)", () => {
     }
     expect(outcome.brief.evidenceLinks).toEqual(
       real.evidence.map((item) => item.url),
+    );
+  });
+
+  it("surfaces archivePermalink on cluster Evidence and accepts Archive Permalinks in evidenceLinks", async () => {
+    const items = clusterOfFive("archive", [
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+    ]).map((item, index) => {
+      const id = `arc${index + 1}`;
+      const url = `https://www.reddit.com/r/freelance/comments/${id}/post/`;
+      return evidence({
+        ...item,
+        id: `reddit-${id}`,
+        url,
+        archivePermalink: `https://arctic-shift.photon-reddit.com/search?fun=ids&ids=t3_${id}`,
+      });
+    });
+    const real = gatedCluster("cluster-archive", items);
+    const archiveLinks = items.map((item) => item.archivePermalink!);
+
+    const llm = scriptedLlm(() =>
+      JSON.stringify({
+        status: "brief",
+        painPointSummary: "Freelancers still chase invoices in spreadsheets.",
+        targetMarket: "US freelancers",
+        competitiveLandscape: "Invoicing tools with uneven reminder workflows.",
+        statusQuoSpendSignals: "Weekend chase time.",
+        deliveryCost: "Email APIs; light ops.",
+        difficulty: "M",
+        competitionDensity: 0.4,
+        evidenceLinks: archiveLinks.slice(0, 2),
+      }),
+    );
+
+    const outcome = await createLlmAnalysisPass({ llm }).analyze({
+      cluster: real,
+      intent: {},
+    });
+
+    expect(outcome.status).toBe("brief");
+    if (outcome.status !== "brief") {
+      throw new Error("expected brief");
+    }
+    expect(llm.requests[0]!.user).toMatch(/archivePermalink/);
+    expect(llm.requests[0]!.user).toContain(items[0]!.archivePermalink!);
+    expect(outcome.brief.evidenceLinks).toEqual(archiveLinks.slice(0, 2));
+  });
+
+  it("falls back to Archive Permalinks when present and the LLM omits valid evidenceLinks", async () => {
+    const items = clusterOfFive("archive-fallback", [
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+      "demand-signal",
+    ]).map((item, index) => {
+      const id = `af${index + 1}`;
+      const url = `https://www.reddit.com/r/freelance/comments/${id}/post/`;
+      return evidence({
+        ...item,
+        id: `reddit-${id}`,
+        url,
+        archivePermalink: `https://arctic-shift.photon-reddit.com/search?fun=ids&ids=t3_${id}`,
+      });
+    });
+    const real = gatedCluster("cluster-archive-fallback", items);
+
+    const llm = scriptedLlm(() =>
+      JSON.stringify({
+        status: "brief",
+        painPointSummary: "Concrete scene: chasing payments after every client call.",
+        targetMarket: "US freelancers",
+        competitiveLandscape: "Mature invoicing tools with strong US penetration.",
+        statusQuoSpendSignals: "Hours of manual follow-up each week.",
+        deliveryCost: "Scheduling + email APIs; light ops.",
+        difficulty: "S",
+        competitionDensity: 0.7,
+        evidenceLinks: ["https://invented.example/a"],
+      }),
+    );
+
+    const outcome = await createLlmAnalysisPass({ llm }).analyze({
+      cluster: real,
+      intent: {},
+    });
+
+    expect(outcome.status).toBe("brief");
+    if (outcome.status !== "brief") {
+      throw new Error("expected brief");
+    }
+    expect(outcome.brief.evidenceLinks).toEqual(
+      items.map((item) => item.archivePermalink),
     );
   });
 

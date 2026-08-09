@@ -1,31 +1,45 @@
 /**
- * Seams under test (ticket #38 / Seam B / ADR-0013–0015):
+ * Seams under test (ticket #38 / #51 / Seam B / ADR-0013–0016):
  * - liveSourceDegradationNotes — token-gated skips available for the Run Report
  * - assembleRunReport / writeSkillRunFolder — Report Agent integrates Analysis
  *   outcomes into a time-based run folder (handoff.json + report.md via formatter)
  * - CLI `--live --handoff skill` carries degradation notes on the Skill handoff
+ * - Skill / ANALYSIS guidance — Archive Permalinks for Reddit Brief evidenceLinks
+ * - createLiveDiscoveryMiner → Skill handoff → Run Report — Reddit archive Evidence
+ *   flows to Builder-openable Archive Permalinks (no SERP / mirror / Skill-only crawl)
  *
  * Product Analysis Pass is Cursor agents — not createLlmAnalysisPass.
  */
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "../cli.js";
 import {
   assembleRunReport,
+  createEntryCatalogSignalSources,
+  createLiveDiscoveryMiner,
+  createPainPointMiner,
   createSkillRunFolderPath,
   liveSourceDegradationNotes,
   prepareSkillRunFolder,
+  toArchivePermalink,
   toSkillMiningHandoff,
   writeSkillRunFolder,
   type AnalysisOutcome,
+  type AnalysisPass,
   type Brief,
   type CandidateCluster,
   type EvidenceRef,
+  type JsonHttpClient,
   type SkillMiningHandoff,
 } from "../index.js";
-import { access } from "node:fs/promises";
+
+const REPO_ROOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../..",
+);
 
 const tempDirs: string[] = [];
 
@@ -363,3 +377,224 @@ function liveHandoffCliIo(overrides: {
     stdout: { write() {} },
   };
 }
+
+describe("Skill / ANALYSIS guidance — Archive Permalinks (ticket #51)", () => {
+  it("ANALYSIS.md requires Brief evidenceLinks to include Archive Permalinks for Reddit Evidence", async () => {
+    const analysis = await readFile(
+      join(REPO_ROOT, ".agents/skills/pain-point-miner/ANALYSIS.md"),
+      "utf8",
+    );
+
+    expect(analysis).toMatch(/Archive Permalink/i);
+    expect(analysis).toMatch(/`evidenceLinks`/);
+    expect(analysis).toMatch(/Reddit \(via archive\)/);
+    expect(analysis).toMatch(
+      /`evidenceLinks`[^\n]*Archive Permalink|Archive Permalink[^\n]*`evidenceLinks`/i,
+    );
+  });
+
+  it("SKILL.md steers Analysis Pass agents to put Archive Permalinks in Reddit Brief evidenceLinks", async () => {
+    const skill = await readFile(
+      join(REPO_ROOT, ".agents/skills/pain-point-miner/SKILL.md"),
+      "utf8",
+    );
+    const fanOutSection = skill.match(
+      /### 2\. Fan out Analysis Pass[\s\S]*?(?=### 3\.|$)/,
+    )?.[0];
+    expect(fanOutSection).toBeDefined();
+    expect(fanOutSection).toMatch(/Archive Permalink/i);
+    expect(fanOutSection).toMatch(/evidenceLinks|Evidence links/i);
+    expect(skill).toMatch(/Reddit \(via archive\)/);
+    // Rejected cold-start / access bypasses must not be product fallbacks.
+    expect(skill).toMatch(/Call the Script/);
+    expect(skill).not.toMatch(/site:reddit\.com|libreddit|redlib|teddit/i);
+  });
+});
+
+describe("Live composition Skill path — Reddit archive → Run Report (ticket #51)", () => {
+  function scriptedHttp(
+    handler: (url: string) => unknown,
+  ): JsonHttpClient & { readonly requestedUrls: readonly string[] } {
+    const requestedUrls: string[] = [];
+    return {
+      get requestedUrls() {
+        return requestedUrls;
+      },
+      async getJson(url: string) {
+        requestedUrls.push(url);
+        return handler(url);
+      },
+    };
+  }
+
+  it("createLiveDiscoveryMiner Reddit archive Evidence flows through Skill handoff to Run Report Archive Permalinks", async () => {
+    const quoteBase =
+      "I chase unpaid invoices in a spreadsheet every Friday — need a tool";
+    const archiveItems: EvidenceRef[] = Array.from({ length: 5 }, (_, i) => {
+      const id = `inv${i + 1}`;
+      const url = `https://www.reddit.com/r/freelance/comments/${id}/invoice/`;
+      return evidence({
+        id: `reddit-${id}`,
+        quote: `${quoteBase} (${i + 1})`,
+        url,
+        archivePermalink: toArchivePermalink(url) ?? undefined,
+        signalKind: "demand-signal",
+        structuralKey: "invoice-chase",
+      });
+    });
+    expect(
+      archiveItems.every(
+        (item) => typeof item.archivePermalink === "string",
+      ),
+    ).toBe(true);
+
+    const miner = createLiveDiscoveryMiner({
+      embeddings: {
+        async embed(texts) {
+          return texts.map(() => [1, 0, 0]);
+        },
+      },
+      signalSources: [
+        {
+          name: "reddit",
+          async collect() {
+            return archiveItems;
+          },
+        },
+        {
+          name: "hacker-news",
+          async collect() {
+            return [
+              evidence({
+                id: "hn-ask-1",
+                quote: "Ask HN: How do you schedule clinic appointments?",
+                url: "https://news.ycombinator.com/item?id=hn-ask-1",
+                signalSource: "hacker-news",
+                signalKind: "demand-signal",
+                structuralKey: "clinic-schedule",
+              }),
+            ];
+          },
+        },
+      ],
+      followOnFetcher: { async fetchPage() { return []; } },
+      storeReviewSource: { async fetchReviews() { return []; } },
+    });
+
+    const artifact = await miner.run({ countGateThreshold: 5 });
+    const handoff = toSkillMiningHandoff(artifact, {
+      sourceDegradationNotes: liveSourceDegradationNotes({}),
+    });
+
+    const redditGated = handoff.gatedClusters.filter((cluster) =>
+      cluster.evidence.some((item) => item.signalSource === "reddit"),
+    );
+    expect(redditGated.length).toBeGreaterThan(0);
+    for (const item of redditGated.flatMap((cluster) => cluster.evidence)) {
+      if (item.signalSource === "reddit") {
+        expect(item.archivePermalink).toMatch(
+          /^https:\/\/arctic-shift\.photon-reddit\.com\/search\?/,
+        );
+      }
+    }
+
+    // Analysis Pass double mirrors Cursor-agent guidance: Brief evidenceLinks
+    // prefer Archive Permalinks from cluster Evidence (not reddit.com-only).
+    const analysisPass: AnalysisPass = {
+      async analyze({ cluster }) {
+        return {
+          status: "brief",
+          brief: brief({
+            clusterId: cluster.id,
+            painPointSummary:
+              "Freelancers lose Fridays chasing late invoices in spreadsheets.",
+            evidenceLinks: cluster.evidence.map(
+              (item) => item.archivePermalink ?? item.url,
+            ),
+            signalMix: cluster.signalMix,
+          }),
+        };
+      },
+    };
+    const analysisOutcomes: AnalysisOutcome[] = await Promise.all(
+      handoff.gatedClusters.map((cluster) =>
+        analysisPass.analyze({ cluster, intent: handoff.intent }),
+      ),
+    );
+
+    const root = await mkdtemp(join(tmpdir(), "ppm-skill-archive-live-"));
+    tempDirs.push(root);
+    const runDir = join(root, "2026-08-09T12-00-00Z");
+    const written = await writeSkillRunFolder({
+      runDir,
+      handoff,
+      analysisOutcomes,
+    });
+    const report = await readFile(written.reportPath, "utf8");
+
+    for (const item of archiveItems) {
+      expect(report).toContain(item.archivePermalink!);
+    }
+    expect(report).toContain("Canonical:");
+    expect(report).toMatch(/www\.reddit\.com\/r\/freelance\/comments\/inv/);
+    // Rejected access paths must not appear as product fallbacks in the path.
+    expect(report).not.toMatch(/google\.|bing\.|site:reddit|libreddit|redlib|teddit/i);
+  });
+
+  it("Skill handoff labels Reddit channel as Reddit (via archive) when archive cold-start degrades", async () => {
+    const http = scriptedHttp((url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "arctic-shift.photon-reddit.com") {
+        throw new Error("archive down");
+      }
+      if (parsed.hostname === "hn.algolia.com") {
+        return {
+          hits: [
+            {
+              objectID: "hn-survives",
+              title: "Ask HN: I wish inventory was easier",
+              story_text: "Still using a spreadsheet.",
+            },
+          ],
+        };
+      }
+      throw new Error(`Unexpected host: ${parsed.hostname}`);
+    });
+
+    const miner = createPainPointMiner({
+      signalSources: createEntryCatalogSignalSources({ http }),
+      embeddings: {
+        async embed(texts) {
+          return texts.map(() => [0, 1, 0]);
+        },
+      },
+      followOnFetcher: { async fetchPage() { return []; } },
+      storeReviewSource: { async fetchReviews() { return []; } },
+    });
+    const artifact = await miner.run({});
+    const handoff = toSkillMiningHandoff(artifact, {
+      sourceDegradationNotes: liveSourceDegradationNotes({}),
+    });
+
+    expect(
+      handoff.sourceDegradationNotes.some(
+        (note) =>
+          note.includes("reddit") && note.includes("Reddit (via archive)"),
+      ),
+    ).toBe(true);
+    expect(
+      artifact.evidence.some((item) => item.signalSource === "hacker-news"),
+    ).toBe(true);
+    for (const url of http.requestedUrls) {
+      expect(url).not.toMatch(/www\.reddit\.com/i);
+      expect(url).not.toMatch(/google\.|bing\.|libreddit|redlib|teddit/i);
+    }
+
+    const markdown = assembleRunReport({
+      handoff,
+      analysisOutcomes: [],
+      runId: "run-archive-degraded",
+    });
+    expect(markdown).toMatch(/Reddit \(via archive\)/);
+  });
+});

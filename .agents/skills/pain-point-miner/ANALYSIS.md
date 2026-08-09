@@ -5,7 +5,7 @@ Use this only inside a **single** Candidate Cluster analysis step. Do not load s
 ## Input (cluster-scoped)
 
 - `cluster.id`
-- `cluster.evidence[]` — quotable + linkable items for **this** cluster only
+- `cluster.evidence[]` — quotable + linkable items for **this** cluster only (may include `url` + `archivePermalink`)
 - `cluster.evidenceCount` / `cluster.signalMix` (pre-analysis hint)
 - Optional Intent (`theme`, `productShape`, `constraints`, `hardNos`, `successDefinition`) — preference notes only (e.g. Delivery Cost commentary); not a crawl whitelist
 
@@ -20,7 +20,7 @@ Otherwise emit a **Brief**.
 | Field | Notes |
 | --- | --- |
 | `painPointSummary` | Concrete pain, grounded in this cluster’s Evidence |
-| `evidenceLinks` | URLs from this cluster’s Evidence |
+| `evidenceLinks` | Links from this cluster’s Evidence. For **Reddit (via archive)** Evidence, include each item’s **Archive Permalink** (Builder-openable); canonical Reddit URL may also appear. Do not invent URLs. |
 | `targetMarket` | Who hurts — geography/locale when Evidence supports it |
 | `competitiveLandscape` | Existing offerings + fit / local penetration; Mature Solution as annotation |
 | `statusQuoSpendSignals` | What people spend (money/time) today |

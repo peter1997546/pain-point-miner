@@ -24,7 +24,8 @@ Hollow vs Pain Point:
 
 Brief rules:
 - Ground the Pain Point summary in this cluster's Evidence only.
-- Do not invent Evidence. Quote and link only URLs already present on the cluster.
+- Do not invent Evidence. Quote and link only URLs already present on the cluster (canonical url and/or archivePermalink).
+- For Reddit Evidence, Brief evidenceLinks must include each item's Archive Permalink when present on the cluster; canonical Reddit URLs may also appear.
 - Competitive Landscape must judge actual market fit / local penetration for the relevant Target Market. Annotate Mature Solution presence when the market is already well served. Competitor country-of-origin alone does not invent an opportunity.
 - Delivery Cost is a rough build/run cost driver read (models, APIs, ops, compliance, etc.). Never invent TAM, ARR, or profit forecasts.
 - difficulty must be one of S, M, L.
@@ -71,6 +72,7 @@ function buildAnalysisUserPrompt(
         id: item.id,
         quote: item.quote,
         url: item.url,
+        archivePermalink: item.archivePermalink ?? null,
         signalSource: item.signalSource,
         signalKind: item.signalKind ?? null,
       })),
@@ -119,14 +121,20 @@ function buildBriefFromParsed(
   parsed: Record<string, unknown>,
   cluster: CandidateCluster,
 ): Brief {
-  const allowed = new Set(cluster.evidence.map((item) => item.url));
+  const allowed = new Set<string>();
+  for (const item of cluster.evidence) {
+    allowed.add(item.url);
+    if (item.archivePermalink) {
+      allowed.add(item.archivePermalink);
+    }
+  }
   const fromModel = asArray(parsed.evidenceLinks)
     ?.map((link) => asString(link))
     .filter((link): link is string => link !== undefined && allowed.has(link));
   const evidenceLinks =
     fromModel && fromModel.length > 0
       ? fromModel
-      : cluster.evidence.map((item) => item.url);
+      : cluster.evidence.map((item) => item.archivePermalink ?? item.url);
 
   const painPointSummary = requireField(parsed, "painPointSummary");
   const targetMarket = requireField(parsed, "targetMarket");

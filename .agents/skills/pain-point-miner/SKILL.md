@@ -59,7 +59,7 @@ npm run cli -- --live --format json --handoff skill \
 
 Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gatedClusters`, `saturationStopped`, and `sourceDegradationNotes` (`toSkillMiningHandoff` merges `RunArtifact` runtime notes with `liveSourceDegradationNotes` token-gated skips).
 
-**Priority for live sources:** token-free paths first (Reddit (via archive) per ADR-0016, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; port-level runtime failures also note without blocking — both land on the handoff for the Run Report. Builder-facing Reddit Evidence links in the Run Report must include Archive Permalinks (canonical reddit.com URLs alone are not enough).
+**Priority for live sources:** token-free paths first (Reddit (via archive) per ADR-0016, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; port-level runtime failures also note without blocking — both land on the handoff for the Run Report. When Reddit archive access degrades, `sourceDegradationNotes` label the channel as **Reddit (via archive)**. Builder-facing Reddit Evidence links in the Run Report must include Archive Permalinks (canonical reddit.com URLs alone are not enough).
 
 **Embeddings:** `--live` defaults to free/local `createLocalEmbeddings` (ADR-0012; model `Xenova/bge-small-en-v1.5`, cache `PPM_EMBEDDINGS_CACHE_DIR` / `.pain-point-miner/models`). Do **not** treat `OPENAI_API_KEY` / paid embedding APIs as the product requirement. Prefer snapshot-baked weights via `npm run bake:local-embeddings` (Cloud `.cursor/environment.json` install; ticket #37). OpenAI-compatible is experimental only (`PPM_EMBEDDINGS_BACKEND=openai-compatible`).
 
@@ -69,9 +69,10 @@ Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gate
 
 For every entry in `gatedClusters`, start a **separate** Cursor subagent (parallel OK):
 
-- **Input:** that cluster only (`cluster.id`, `cluster.evidence`, `cluster.signalMix`, `cluster.evidenceCount`) plus optional Intent.
+- **Input:** that cluster only (`cluster.id`, `cluster.evidence`, `cluster.signalMix`, `cluster.evidenceCount`) plus optional Intent. Reddit Evidence may carry both canonical `url` and `archivePermalink`.
 - **Judgment:** Hollow → reject with reason; else emit a Pain Point **Brief**.
-- **Brief fields:** Pain Point summary, Evidence links, Target Market, Competitive Landscape, status-quo spend signals, Delivery Cost, difficulty S/M/L, Signal Mix, competition density annotation.
+- **Brief fields:** Pain Point summary, Evidence links (`evidenceLinks`), Target Market, Competitive Landscape, status-quo spend signals, Delivery Cost, difficulty S/M/L, Signal Mix, competition density annotation.
+- **Reddit `evidenceLinks`:** when cluster Evidence has an **Archive Permalink**, include it in Brief `evidenceLinks` (canonical Reddit URL may also appear). Emit links already present on the cluster — do not invent URLs.
 - **Return** the structured outcome to the parent / Report Agent — do not write the final Run Report inside each analysis subagent.
 
 See [ANALYSIS.md](ANALYSIS.md) for the per-cluster checklist.
