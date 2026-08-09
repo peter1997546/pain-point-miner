@@ -13,12 +13,12 @@ The job of this tool: start from an Entry Catalog, crawl Signal Sources, Follow-
 _Avoid_: Verifier, restricted search form, brainstormer, competitor-complaint miner (as the primary job)
 
 **Script**:
-The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies the Count Gate / Saturation Stop — so raw Evidence never has to be stuffed into an agent context window. Required in v1 because a pure Skill path would drown the agent in volume.
-_Avoid_: Notebook one-off (unless it is the Script), skill-only crawl
+The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies the Count Gate / Saturation Stop — so raw Evidence never has to be stuffed into an agent context window. Required in v1 because a pure Skill path would drown the agent in volume. When a Signal Source’s live edge is blocked, the Script switches access channel (e.g. Reddit (via archive)); it is not replaced by Skill-only crawl.
+_Avoid_: Notebook one-off (unless it is the Script), skill-only crawl, “pure Skill” as the fix for source access
 
 **Skill**:
 Agent-facing orchestration: interview optional Intent, call the Script for **live** mining, fan out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — then hand outcomes to a Report Agent to assemble the Run Report. Never the entire crawl corpus in one prompt.
-_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode
+_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode, Skill-side reimplementation of Entry Catalog crawl to bypass Script
 
 **Intent**:
 Optional free-text preference notes the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
@@ -41,8 +41,12 @@ Evidence mainly about problems with a *named existing product* (bugs, pricing, �
 _Avoid_: Treating “alternative/review” threads as the same thing as demand discovery
 
 **Evidence**:
-A concrete public artifact (post, review, thread) pulled from a Signal Source — quotable and linkable. Produced by crawling (code), not by model invention.
-_Avoid_: Anecdote (unsourced), “market insight” without a source
+A concrete public artifact (post, review, thread) pulled from a Signal Source — quotable and linkable. Produced by crawling (code), not by model invention. Reddit-origin Evidence keeps a canonical Reddit URL and must also expose an Archive Permalink wherever the Builder is expected to open the link (Run Report / Brief).
+_Avoid_: Anecdote (unsourced), “market insight” without a source, Report links that only point at live reddit.com when an Archive Permalink exists
+
+**Archive Permalink**:
+A Builder-openable archive deep link (or equivalent archive identity URL) for an Evidence item when the live Signal Source URL is not a reliable product-path open target. For Reddit (via archive), derived by converting the canonical Reddit URL / id — not by inventing a new artifact.
+_Avoid_: Replacing Evidence with archive search snippets that have no stable id, treating Google/Bing result URLs as the Evidence link
 
 **Candidate Cluster**:
 A code-grouped set of Evidence items treated as the same underlying complaint for counting. Grouping uses structural keys plus meaning similarity (embeddings / cosine), not shared-word overlap as the main signal.
@@ -93,25 +97,25 @@ Rough read of build/run cost drivers for a plausible solution. Not a revenue or 
 _Avoid_: Profit estimate, TAM, ARR projection
 
 **Source Catalog** (v1):
-Reddit, Apple App Store reviews, Google Play reviews, Hacker News, Product Hunt, Indie Hackers.
-_Avoid_: G2/Capterra (v1), GitHub issues (v1), Chrome Web Store (v1)
+Reddit (via archive), Apple App Store reviews, Google Play reviews, Hacker News, Product Hunt, Indie Hackers.
+_Avoid_: G2/Capterra (v1), GitHub issues (v1), Chrome Web Store (v1), live reddit.com as the product Reddit access path, “Google site:reddit.com” as a Reddit substitute
 
 **Entry Catalog** (v1):
 Cold-start before Follow-on Fetch:
-- Reddit boards (primary): `r/smallbusiness`, `r/freelance`, `r/sysadmin`, `r/webdev`, `r/sales`, `r/marketing`, `r/ecommerce`
-- Reddit query patterns (Demand-oriented): wish / tool for / why no / spreadsheet workaround / how do you handle
+- Reddit (via archive) boards (primary): `r/smallbusiness`, `r/freelance`, `r/sysadmin`, `r/webdev`, `r/sales`, `r/marketing`, `r/ecommerce`
+- Reddit (via archive) query patterns (Demand-oriented): wish / tool for / why no / spreadsheet workaround / how do you handle
 - HN: Ask HN–style frustration / wish searches
 - Product Hunt & Indie Hackers: not primary cold-start; Follow-on when referenced
 - Large founder boards (e.g. Entrepreneur): deprioritized in the first wave
-_Avoid_: Hot-only firehose, competitor-subreddit sweep as the primary entry, PH/IH as main demand entry
+_Avoid_: Hot-only firehose, competitor-subreddit sweep as the primary entry, PH/IH as main demand entry, treating live Reddit JSON/HTML as required for cold-start
 
 **Signal Source**:
 One channel from the Source Catalog mined for Evidence.
 _Avoid_: Corpus, scrape target (implementation wording)
 
 **Follow-on Fetch**:
-When material points at a *specific* demand-relevant page or thread, or names a product/app worth a Store Second Pass, fetch it next. Prefer Demand Signal pages over generic “best alternative / review” pages when choosing what to deepen.
-_Avoid_: Intent-biased source picking, treating every “alternative to X” link as a Demand Signal
+When material points at a *specific* demand-relevant page or thread, or names a product/app worth a Store Second Pass, fetch it next. Prefer Demand Signal pages over generic “best alternative / review” pages when choosing what to deepen. Reddit URLs discovered in material are converted and deepened via Reddit (via archive), not re-fetched as live reddit.com.
+_Avoid_: Intent-biased source picking, treating every “alternative to X” link as a Demand Signal, Follow-on that depends on opening live reddit.com in the product environment
 
 **Store Second Pass**:
 App Store / Play reviews for apps *mentioned* in forum-style Evidence — secondary, often Incumbent Friction, used to enrich not to define demand.
