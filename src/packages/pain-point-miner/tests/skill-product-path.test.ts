@@ -429,6 +429,10 @@ describe("Skill Intent interview before mine (tickets #56–#58 / ADR-0017)", ()
     )?.[0];
     expect(hardRules).toBeDefined();
     expect(hardRules).toMatch(/Interview before mine/i);
+    // Ticket #58: guide-before-Script must stay in Hard rules — not only in Process prose.
+    expect(hardRules).toMatch(
+      /Before calling the Script[\s\S]*?guide the Builder on Intent/i,
+    );
     expect(hardRules).toMatch(/ADR-0017/);
     expect(hardRules).toMatch(/do not recommend empty/i);
     expect(hardRules).toMatch(
