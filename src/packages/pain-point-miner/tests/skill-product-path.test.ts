@@ -453,6 +453,7 @@ describe("Skill Intent interview before mine (ticket #56 / ADR-0017)", () => {
     expect(step0).toMatch(/leave (any or all |fields )?blank|may leave/i);
     expect(step0).toMatch(/do \*\*not\*\* recommend empty|do not recommend empty/i);
     expect(step0).toMatch(/Stop and wait|wait.*explicit/i);
+    // Explicit skip vocabulary from issue #56 (Chinese “不填” / skip / equivalent).
     expect(step0).toMatch(/不填|skip/i);
     expect(step0).toMatch(
       /\*\*Done when:\*\*[^\n]*(explicitly filled|explicit fill|explicitly skipped)/i,
