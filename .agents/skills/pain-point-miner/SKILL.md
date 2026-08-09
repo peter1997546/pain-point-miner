@@ -12,12 +12,12 @@ description: >
 
 v1 is **Script + Skill** (ADR-0009). The Script owns crawl → Follow-on → Store Second Pass → cluster → Count Gate / Saturation Stop. This Skill **interviews Intent**, runs the Script **live**, fans out Analysis Pass **one gated Candidate Cluster at a time** in Cursor agents (ADR-0011 / ADR-0013), then hands outcomes to a **Report Agent** for the **Run Report** (ADR-0015).
 
-Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009`](../../../docs/adr/0009-script-under-skill.md), [`docs/adr/0011`](../../../docs/adr/0011-per-cluster-analysis-pass.md), [`docs/adr/0012`](../../../docs/adr/0012-free-local-embeddings-in-snapshot.md), [`docs/adr/0013`](../../../docs/adr/0013-analysis-pass-agent-only.md), [`docs/adr/0014`](../../../docs/adr/0014-live-mining-for-real-usage.md), [`docs/adr/0015`](../../../docs/adr/0015-run-report-via-report-agent.md).
+Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009`](../../../docs/adr/0009-script-under-skill.md), [`docs/adr/0011`](../../../docs/adr/0011-per-cluster-analysis-pass.md), [`docs/adr/0012`](../../../docs/adr/0012-free-local-embeddings-in-snapshot.md), [`docs/adr/0013`](../../../docs/adr/0013-analysis-pass-agent-only.md), [`docs/adr/0014`](../../../docs/adr/0014-live-mining-for-real-usage.md), [`docs/adr/0015`](../../../docs/adr/0015-run-report-via-report-agent.md), [`docs/adr/0016`](../../../docs/adr/0016-reddit-via-archive-not-live.md).
 
 ## Hard rules
 
 1. **Real usage = live mining** (ADR-0014). Fixtures are for tests/CI only — never offer fixture crawl as the Builder’s product path.
-2. **Call the Script** for mining. Do not re-implement crawl, Follow-on, clustering, or gates in chat.
+2. **Call the Script** for mining. Do not re-implement crawl, Follow-on, clustering, or gates in chat. Do not switch to Skill-only crawl to “fix” Reddit access — Reddit cold-start/Follow-on is **Reddit (via archive)** inside the Script (ADR-0016).
 3. **Per-cluster Analysis Pass only**, in **Cursor agents** (ADR-0013) — not a product LLM HTTP adapter. Each subagent receives **one** gated Candidate Cluster’s Evidence plus Intent / Brief fields for that cluster.
 4. **Never** paste the full scrape corpus, all Candidate Clusters, or the entire `evidence[]` array into a single Analysis Pass prompt.
 5. **Embeddings are free/local** (ADR-0012) — do not require a paid embedding API for the product path. Prefer models baked into the Cloud environment snapshot.
@@ -59,7 +59,7 @@ npm run cli -- --live --format json --handoff skill \
 
 Wire Intent flags the Builder actually answered. Handoff carries `intent`, `gatedClusters`, `saturationStopped`, and `sourceDegradationNotes` (`toSkillMiningHandoff` merges `RunArtifact` runtime notes with `liveSourceDegradationNotes` token-gated skips).
 
-**Priority for live sources:** token-free paths first (Reddit, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; port-level runtime failures also note without blocking — both land on the handoff for the Run Report.
+**Priority for live sources:** token-free paths first (Reddit (via archive) per ADR-0016, HN, store review HTTP). Skip or degrade token-gated Follow-on (e.g. Product Hunt) when credentials are absent; port-level runtime failures also note without blocking — both land on the handoff for the Run Report. Builder-facing Reddit Evidence links in the Run Report must include Archive Permalinks (canonical reddit.com URLs alone are not enough).
 
 **Embeddings:** `--live` defaults to free/local `createLocalEmbeddings` (ADR-0012; model `Xenova/bge-small-en-v1.5`, cache `PPM_EMBEDDINGS_CACHE_DIR` / `.pain-point-miner/models`). Do **not** treat `OPENAI_API_KEY` / paid embedding APIs as the product requirement. Prefer snapshot-baked weights via `npm run bake:local-embeddings` (Cloud `.cursor/environment.json` install; ticket #37). OpenAI-compatible is experimental only (`PPM_EMBEDDINGS_BACKEND=openai-compatible`).
 
