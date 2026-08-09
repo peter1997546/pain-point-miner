@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ARCTIC_SHIFT_API_BASE,
   ENTRY_CATALOG_DEPRIORITIZED_REDDIT_BOARDS,
   ENTRY_CATALOG_HN_ASK_QUERIES,
   ENTRY_CATALOG_REDDIT_BOARDS,
@@ -13,11 +14,12 @@ import {
 } from "../index.js";
 
 /**
- * Seams under test (ticket #10 / ADR-0010):
- * - SignalSource.collect for Reddit + HN Entry Catalog adapters
+ * Seams under test (ticket #10 / #49 / ADR-0010 / ADR-0016):
+ * - SignalSource.collect for Reddit (via archive) + HN Entry Catalog adapters
  * - Injectable JsonHttpClient (recordings — no live network in CI)
  * - createPainPointMiner({ signalSources }) — same port, no second public seam
  * - Cold-start composition: primary boards/queries only (founder / PH / IH out)
+ * - Reddit channel is Arctic Shift archive — not live www.reddit.com/search.json
  */
 
 function createScriptedHttpClient(
@@ -35,19 +37,22 @@ function createScriptedHttpClient(
   };
 }
 
-function redditListing(...posts: { id: string; title: string; subreddit: string; selftext?: string }[]) {
+function archivePosts(
+  ...posts: {
+    id: string;
+    title: string;
+    subreddit: string;
+    selftext?: string;
+  }[]
+) {
   return {
-    data: {
-      children: posts.map((post) => ({
-        data: {
-          id: post.id,
-          title: post.title,
-          selftext: post.selftext ?? "",
-          subreddit: post.subreddit,
-          permalink: `/r/${post.subreddit}/comments/${post.id}/fixture/`,
-        },
-      })),
-    },
+    data: posts.map((post) => ({
+      id: post.id,
+      title: post.title,
+      selftext: post.selftext ?? "",
+      subreddit: post.subreddit,
+      permalink: `/r/${post.subreddit}/comments/${post.id}/fixture/`,
+    })),
   };
 }
 
@@ -63,7 +68,7 @@ function hnHits(
   };
 }
 
-describe("Entry Catalog adapters (Reddit + HN)", () => {
+describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
   it("lists ADR-0010 primary Reddit boards and demand queries; deprioritizes founder boards", () => {
     expect([...ENTRY_CATALOG_REDDIT_BOARDS]).toEqual([
       "smallbusiness",
@@ -88,22 +93,28 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
     }
   });
 
-  it("Reddit Signal Source mines primary boards with demand queries from recordings", async () => {
+  it("Reddit Signal Source mines primary boards via Arctic Shift archive, not live reddit.com", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
-      expect(parsed.hostname).toBe("www.reddit.com");
-      const match = parsed.pathname.match(/^\/r\/([^/]+)\/search\.json$/);
-      expect(match).not.toBeNull();
-      const board = match![1]!;
+      expect(parsed.origin).toBe(ARCTIC_SHIFT_API_BASE);
+      expect(parsed.pathname).toBe("/api/posts/search");
+      const board = parsed.searchParams.get("subreddit") ?? "";
       expect(ENTRY_CATALOG_REDDIT_BOARDS).toContain(board);
       expect(ENTRY_CATALOG_DEPRIORITIZED_REDDIT_BOARDS).not.toContain(board);
-      const query = parsed.searchParams.get("q") ?? "";
+      const query = parsed.searchParams.get("query") ?? "";
       expect(ENTRY_CATALOG_REDDIT_DEMAND_QUERIES).toContain(query);
-      expect(parsed.searchParams.get("restrict_sr")).toBe("1");
-      const slug = query.replace(/\s+/g, "-");
+      expect(parsed.searchParams.get("sort")).toBe("desc");
+      // Stable unique base36-ish id per board×query (no collisions under dedupe).
+      const boardIdx = ENTRY_CATALOG_REDDIT_BOARDS.indexOf(
+        board as (typeof ENTRY_CATALOG_REDDIT_BOARDS)[number],
+      );
+      const queryIdx = ENTRY_CATALOG_REDDIT_DEMAND_QUERIES.indexOf(
+        query as (typeof ENTRY_CATALOG_REDDIT_DEMAND_QUERIES)[number],
+      );
+      const id = `b${boardIdx}q${queryIdx}x`;
 
-      return redditListing({
-        id: `${board}-${slug}-1`,
+      return archivePosts({
+        id,
         title: `${query}: need something better for ${board}`,
         subreddit: board,
         selftext: "Still stuck in a spreadsheet workaround.",
@@ -128,9 +139,14 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
         expect(item.signalSource).toBe("reddit");
         expect(item.quote.length).toBeGreaterThan(0);
         expect(item.url).toMatch(/^https:\/\/www\.reddit\.com\/r\//);
+        expect(item.archivePermalink).toMatch(
+          /^https:\/\/arctic-shift\.photon-reddit\.com\/search\?fun=ids&ids=t3_/,
+        );
       }
     }
     for (const url of http.requestedUrls) {
+      expect(url).not.toMatch(/www\.reddit\.com/i);
+      expect(url).not.toMatch(/search\.json/i);
       expect(url).not.toMatch(/\/r\/Entrepreneur\//i);
       expect(url).not.toMatch(/producthunt|indiehackers|indie-hackers/i);
     }
@@ -170,16 +186,16 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
     }
   });
 
-  it("skips a failed catalog request and still returns Evidence from the rest", async () => {
+  it("skips a failed archive request and still returns Evidence from the rest", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
-      if (parsed.hostname === "www.reddit.com") {
-        const board = parsed.pathname.match(/^\/r\/([^/]+)\//)?.[1] ?? "";
+      if (parsed.hostname === "arctic-shift.photon-reddit.com") {
+        const board = parsed.searchParams.get("subreddit") ?? "";
         if (board === "freelance") {
-          throw new Error("simulated reddit outage");
+          throw new Error("simulated archive outage");
         }
-        return redditListing({
-          id: `${board}-ok`,
+        return archivePosts({
+          id: `ok${board}`,
           title: `wish on ${board}`,
           subreddit: board,
         });
@@ -198,18 +214,25 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
       true,
     );
     expect(reddit.some((item) => item.url.includes("/r/webdev/"))).toBe(true);
+    expect(
+      reddit.every(
+        (item) =>
+          typeof item.archivePermalink === "string" &&
+          item.archivePermalink.includes("arctic-shift.photon-reddit.com"),
+      ),
+    ).toBe(true);
     expect(hn.length).toBeGreaterThan(0);
   });
 
   it("Reddit Evidence extracts PH/IH Follow-on URLs and store app links from post text", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
-      if (parsed.hostname !== "www.reddit.com") {
+      if (parsed.hostname !== "arctic-shift.photon-reddit.com") {
         return { hits: [] };
       }
-      const board = parsed.pathname.match(/^\/r\/([^/]+)\//)?.[1] ?? "webdev";
-      return redditListing({
-        id: `${board}-links`,
+      const board = parsed.searchParams.get("subreddit") ?? "webdev";
+      return archivePosts({
+        id: `lnk${board}`,
         title: "wish: better invoicing",
         subreddit: board,
         selftext:
@@ -241,17 +264,23 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
         { id: "com.wave.accounting", store: "play" },
       ]),
     );
+    expect(withHints!.archivePermalink).toBeDefined();
   });
 
-  it("cold-start factory wires Reddit + HN into run without founder boards or PH/IH", async () => {
+  it("cold-start factory wires Reddit (via archive) + HN into run without founder boards or PH/IH", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
-      if (parsed.hostname === "www.reddit.com") {
-        const match = parsed.pathname.match(/^\/r\/([^/]+)\/search\.json$/);
-        const board = match?.[1] ?? "unknown";
-        const query = parsed.searchParams.get("q") ?? "q";
-        return redditListing({
-          id: `${board}-${query.replace(/\s+/g, "-")}`,
+      if (parsed.hostname === "arctic-shift.photon-reddit.com") {
+        const board = parsed.searchParams.get("subreddit") ?? "unknown";
+        const query = parsed.searchParams.get("query") ?? "q";
+        const boardIdx = ENTRY_CATALOG_REDDIT_BOARDS.indexOf(
+          board as (typeof ENTRY_CATALOG_REDDIT_BOARDS)[number],
+        );
+        const queryIdx = ENTRY_CATALOG_REDDIT_DEMAND_QUERIES.indexOf(
+          query as (typeof ENTRY_CATALOG_REDDIT_DEMAND_QUERIES)[number],
+        );
+        return archivePosts({
+          id: `c${boardIdx}q${queryIdx}`,
           title: `wish: ${board}`,
           subreddit: board,
         });
@@ -290,7 +319,16 @@ describe("Entry Catalog adapters (Reddit + HN)", () => {
           item.signalSource === "reddit" || item.signalSource === "hacker-news",
       ),
     ).toBe(true);
+    for (const item of artifact.evidence.filter(
+      (entry) => entry.signalSource === "reddit",
+    )) {
+      expect(item.archivePermalink).toMatch(
+        /^https:\/\/arctic-shift\.photon-reddit\.com\/search\?/,
+      );
+    }
     for (const url of http.requestedUrls) {
+      expect(url).not.toMatch(/www\.reddit\.com/i);
+      expect(url).not.toMatch(/search\.json/i);
       expect(url).not.toMatch(/\/r\/Entrepreneur\//i);
       expect(url).not.toMatch(/producthunt|indiehackers|indie-hackers/i);
     }

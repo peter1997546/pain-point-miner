@@ -8,9 +8,10 @@ export type EntryCatalogSignalSourcesDeps = {
 };
 
 /**
- * Cold-start Entry Catalog wave: Reddit primary boards + HN Ask HN searches.
- * Does not include Product Hunt, Indie Hackers, or deprioritized founder boards
- * (ADR-0010) — those belong to Follow-on / later waves.
+ * Cold-start Entry Catalog wave: Reddit (via archive) primary boards + HN Ask
+ * HN searches (ADR-0010 / ADR-0016). Does not include Product Hunt, Indie
+ * Hackers, or deprioritized founder boards — those belong to Follow-on / later
+ * waves. Composed unchanged into `createLiveDiscoveryMiner` / CLI `--live`.
  */
 export function createEntryCatalogSignalSources(
   deps: EntryCatalogSignalSourcesDeps,
