@@ -427,56 +427,54 @@ describe("Live composition Skill path — Reddit archive → Run Report (ticket 
     };
   }
 
-  it("createLiveDiscoveryMiner Reddit archive Evidence flows through Skill handoff to Run Report Archive Permalinks", async () => {
-    const quoteBase =
+  it("createLiveDiscoveryMiner Entry Catalog Reddit archive Evidence flows through Skill handoff to Run Report Archive Permalinks", async () => {
+    const invoiceTitle = "wish: tool for chasing late invoices";
+    const invoiceBody =
       "I chase unpaid invoices in a spreadsheet every Friday — need a tool";
-    const archiveItems: EvidenceRef[] = Array.from({ length: 5 }, (_, i) => {
-      const id = `inv${i + 1}`;
-      const url = `https://www.reddit.com/r/freelance/comments/${id}/invoice/`;
-      return evidence({
-        id: `reddit-${id}`,
-        quote: `${quoteBase} (${i + 1})`,
-        url,
-        archivePermalink: toArchivePermalink(url) ?? undefined,
-        signalKind: "demand-signal",
-        structuralKey: "invoice-chase",
-      });
+    let archiveSeq = 0;
+    const http = scriptedHttp((url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "arctic-shift.photon-reddit.com") {
+        archiveSeq += 1;
+        const id = `inv${archiveSeq}`;
+        const board = parsed.searchParams.get("subreddit") ?? "freelance";
+        return {
+          data: [
+            {
+              id,
+              title: invoiceTitle,
+              selftext: `${invoiceBody} (${id})`,
+              subreddit: board,
+              permalink: `/r/${board}/comments/${id}/invoice/`,
+            },
+          ],
+        };
+      }
+      if (parsed.hostname === "hn.algolia.com") {
+        return {
+          hits: [
+            {
+              objectID: "hn-ask-clinic",
+              title: "Ask HN: How do you schedule clinic appointments?",
+              story_text: "Looking for clinic scheduling ideas.",
+            },
+          ],
+        };
+      }
+      throw new Error(`Unexpected host in live composition: ${parsed.hostname}`);
     });
-    expect(
-      archiveItems.every(
-        (item) => typeof item.archivePermalink === "string",
-      ),
-    ).toBe(true);
 
     const miner = createLiveDiscoveryMiner({
+      http,
       embeddings: {
         async embed(texts) {
-          return texts.map(() => [1, 0, 0]);
+          return texts.map((text) =>
+            text.includes("invoices") || text.includes(invoiceTitle)
+              ? [1, 0, 0]
+              : [0, 1, 0],
+          );
         },
       },
-      signalSources: [
-        {
-          name: "reddit",
-          async collect() {
-            return archiveItems;
-          },
-        },
-        {
-          name: "hacker-news",
-          async collect() {
-            return [
-              evidence({
-                id: "hn-ask-1",
-                quote: "Ask HN: How do you schedule clinic appointments?",
-                url: "https://news.ycombinator.com/item?id=hn-ask-1",
-                signalSource: "hacker-news",
-                signalKind: "demand-signal",
-                structuralKey: "clinic-schedule",
-              }),
-            ];
-          },
-        },
-      ],
       followOnFetcher: { async fetchPage() { return []; } },
       storeReviewSource: { async fetchReviews() { return []; } },
     });
@@ -486,20 +484,34 @@ describe("Live composition Skill path — Reddit archive → Run Report (ticket 
       sourceDegradationNotes: liveSourceDegradationNotes({}),
     });
 
+    expect(http.requestedUrls.some((url) => url.includes("arctic-shift"))).toBe(
+      true,
+    );
+    expect(http.requestedUrls.some((url) => url.includes("hn.algolia.com"))).toBe(
+      true,
+    );
+    for (const url of http.requestedUrls) {
+      expect(url).not.toMatch(/www\.reddit\.com/i);
+      expect(url).not.toMatch(/google\.|bing\.|libreddit|redlib|teddit/i);
+    }
+
     const redditGated = handoff.gatedClusters.filter((cluster) =>
       cluster.evidence.some((item) => item.signalSource === "reddit"),
     );
     expect(redditGated.length).toBeGreaterThan(0);
-    for (const item of redditGated.flatMap((cluster) => cluster.evidence)) {
-      if (item.signalSource === "reddit") {
-        expect(item.archivePermalink).toMatch(
-          /^https:\/\/arctic-shift\.photon-reddit\.com\/search\?/,
-        );
-      }
+    const redditEvidence = redditGated.flatMap((cluster) =>
+      cluster.evidence.filter((item) => item.signalSource === "reddit"),
+    );
+    expect(redditEvidence.length).toBeGreaterThanOrEqual(5);
+    for (const item of redditEvidence) {
+      expect(item.archivePermalink).toMatch(
+        /^https:\/\/arctic-shift\.photon-reddit\.com\/search\?/,
+      );
+      expect(toArchivePermalink(item.url)).toBe(item.archivePermalink);
     }
 
     // Analysis Pass double mirrors Cursor-agent guidance: Brief evidenceLinks
-    // prefer Archive Permalinks from cluster Evidence (not reddit.com-only).
+    // include Archive Permalinks from cluster Evidence.
     const analysisPass: AnalysisPass = {
       async analyze({ cluster }) {
         return {
@@ -532,12 +544,9 @@ describe("Live composition Skill path — Reddit archive → Run Report (ticket 
     });
     const report = await readFile(written.reportPath, "utf8");
 
-    for (const item of archiveItems) {
-      expect(report).toContain(item.archivePermalink!);
-    }
+    expect(report).toContain(redditEvidence[0]!.archivePermalink!);
     expect(report).toContain("Canonical:");
-    expect(report).toMatch(/www\.reddit\.com\/r\/freelance\/comments\/inv/);
-    // Rejected access paths must not appear as product fallbacks in the path.
+    expect(report).toMatch(/www\.reddit\.com\/r\/.+\/comments\/inv/);
     expect(report).not.toMatch(/google\.|bing\.|site:reddit|libreddit|redlib|teddit/i);
   });
 

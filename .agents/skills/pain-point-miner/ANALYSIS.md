@@ -20,7 +20,7 @@ Otherwise emit a **Brief**.
 | Field | Notes |
 | --- | --- |
 | `painPointSummary` | Concrete pain, grounded in this cluster’s Evidence |
-| `evidenceLinks` | Links from this cluster’s Evidence. For **Reddit (via archive)** Evidence, include each item’s **Archive Permalink** (Builder-openable); canonical Reddit URL may also appear. Do not invent URLs. |
+| `evidenceLinks` | Links from this cluster’s Evidence. For **Reddit (via archive)** Evidence, include each item’s **Archive Permalink** as a Builder-openable link; canonical Reddit URL may also appear for identity. Prefer the Archive Permalink when both are on the Evidence item. Do not invent URLs. |
 | `targetMarket` | Who hurts — geography/locale when Evidence supports it |
 | `competitiveLandscape` | Existing offerings + fit / local penetration; Mature Solution as annotation |
 | `statusQuoSpendSignals` | What people spend (money/time) today |
