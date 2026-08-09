@@ -16,7 +16,8 @@ const miner = createPainPointMiner({
   embeddings: createFixtureEmbeddings(),
 });
 
-// Empty Intent is valid — documented default is `{}`.
+// Empty Intent is a valid Script/API run input — documented default is `{}`.
+// On the Skill path, empty is only after an explicit Builder skip (ADR-0017).
 const artifact = await miner.run({});
 ```
 
@@ -74,7 +75,7 @@ Repo-managed Cloud install (`.cursor/environment.json`) runs `npm ci && npm run 
 
 | Input | Default |
 | --- | --- |
-| `run()` / `run({})` / omitted `intent` | Empty Intent `{}` (optional `theme`, `productShape`, `constraints`, `hardNos`, `successDefinition` are Analysis Pass preference notes only — not crawl filters) |
+| `run()` / `run({})` / omitted `intent` | Empty Intent `{}` as **Script** run input (Skill path: only after explicit skip — ADR-0017). Optional `theme`, `productShape`, `constraints`, `hardNos`, `successDefinition` are Analysis Pass preference notes only — not crawl filters |
 | Count Gate | Evidence Count ≥ **5** |
 | Saturation Stop | Halt once **20** Count-Gated clusters exist |
 | Follow-on / Store Second Pass / Analysis Pass | Skipped when those ports are omitted |
