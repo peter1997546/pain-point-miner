@@ -54,7 +54,6 @@ export {
 export { createRedditSignalSource } from "./lib/reddit-signal-source.js";
 export {
   ARCTIC_SHIFT_API_BASE,
-  ARCTIC_SHIFT_SEARCH_UI_BASE,
   toArchivePermalink,
 } from "./lib/archive-permalink.js";
 export { createAppStoreReviewSource } from "./lib/app-store-review-source.js";

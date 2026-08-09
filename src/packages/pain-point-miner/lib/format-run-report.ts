@@ -93,30 +93,31 @@ function formatEvidenceLinks(
   lookup: EvidenceLookup,
 ): string[] {
   const lines: string[] = [];
-  const emitted = new Set<string>();
+  const emittedOpenLinks = new Set<string>();
+  const emittedCanonicalUrls = new Set<string>();
 
   for (const link of brief.evidenceLinks) {
     const match = resolveEvidence(link, lookup);
     if (!match) {
-      if (!emitted.has(link)) {
-        emitted.add(link);
+      if (!emittedOpenLinks.has(link)) {
+        emittedOpenLinks.add(link);
         lines.push(`- ${link}`);
       }
       continue;
     }
 
     const openLink = match.archivePermalink ?? match.url;
-    if (emitted.has(openLink)) {
+    if (emittedOpenLinks.has(openLink)) {
       continue;
     }
-    emitted.add(openLink);
+    emittedOpenLinks.add(openLink);
     lines.push(`- ${openLink}`);
     if (
       match.archivePermalink &&
       match.url !== match.archivePermalink &&
-      !emitted.has(`canonical:${match.url}`)
+      !emittedCanonicalUrls.has(match.url)
     ) {
-      emitted.add(`canonical:${match.url}`);
+      emittedCanonicalUrls.add(match.url);
       lines.push(`  - Canonical: ${match.url}`);
     }
     lines.push(`  > ${match.quote}`);

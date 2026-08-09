@@ -68,6 +68,17 @@ function hnHits(
   };
 }
 
+/** Stable unique id per Entry Catalog board × demand query (avoids dedupe collisions). */
+function archiveFixtureId(board: string, query: string): string {
+  const boardIdx = ENTRY_CATALOG_REDDIT_BOARDS.indexOf(
+    board as (typeof ENTRY_CATALOG_REDDIT_BOARDS)[number],
+  );
+  const queryIdx = ENTRY_CATALOG_REDDIT_DEMAND_QUERIES.indexOf(
+    query as (typeof ENTRY_CATALOG_REDDIT_DEMAND_QUERIES)[number],
+  );
+  return `b${boardIdx}q${queryIdx}`;
+}
+
 describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
   it("lists ADR-0010 primary Reddit boards and demand queries; deprioritizes founder boards", () => {
     expect([...ENTRY_CATALOG_REDDIT_BOARDS]).toEqual([
@@ -104,17 +115,9 @@ describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
       const query = parsed.searchParams.get("query") ?? "";
       expect(ENTRY_CATALOG_REDDIT_DEMAND_QUERIES).toContain(query);
       expect(parsed.searchParams.get("sort")).toBe("desc");
-      // Stable unique base36-ish id per board×query (no collisions under dedupe).
-      const boardIdx = ENTRY_CATALOG_REDDIT_BOARDS.indexOf(
-        board as (typeof ENTRY_CATALOG_REDDIT_BOARDS)[number],
-      );
-      const queryIdx = ENTRY_CATALOG_REDDIT_DEMAND_QUERIES.indexOf(
-        query as (typeof ENTRY_CATALOG_REDDIT_DEMAND_QUERIES)[number],
-      );
-      const id = `b${boardIdx}q${queryIdx}x`;
 
       return archivePosts({
-        id,
+        id: archiveFixtureId(board, query),
         title: `${query}: need something better for ${board}`,
         subreddit: board,
         selftext: "Still stuck in a spreadsheet workaround.",
@@ -224,6 +227,39 @@ describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
     expect(hn.length).toBeGreaterThan(0);
   });
 
+  it("total archive outage notes Reddit (via archive) degradation while HN continues", async () => {
+    const http = createScriptedHttpClient((url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "arctic-shift.photon-reddit.com") {
+        throw new Error("archive down");
+      }
+      return hnHits({
+        objectID: "hn-survives",
+        title: "Ask HN: I wish inventory was easier",
+        story_text: "Still using a spreadsheet.",
+      });
+    });
+
+    const miner = createPainPointMiner({
+      signalSources: createEntryCatalogSignalSources({ http }),
+      embeddings: createFixtureEmbeddings(),
+    });
+    const artifact = await miner.run({});
+
+    expect(
+      artifact.evidence.every((item) => item.signalSource !== "reddit"),
+    ).toBe(true);
+    expect(
+      artifact.evidence.some((item) => item.signalSource === "hacker-news"),
+    ).toBe(true);
+    expect(
+      artifact.sourceDegradationNotes.some(
+        (note) =>
+          note.includes("reddit") && note.includes("Reddit (via archive)"),
+      ),
+    ).toBe(true);
+  });
+
   it("Reddit Evidence extracts PH/IH Follow-on URLs and store app links from post text", async () => {
     const http = createScriptedHttpClient((url) => {
       const parsed = new URL(url);
@@ -273,14 +309,8 @@ describe("Entry Catalog adapters (Reddit via archive + HN)", () => {
       if (parsed.hostname === "arctic-shift.photon-reddit.com") {
         const board = parsed.searchParams.get("subreddit") ?? "unknown";
         const query = parsed.searchParams.get("query") ?? "q";
-        const boardIdx = ENTRY_CATALOG_REDDIT_BOARDS.indexOf(
-          board as (typeof ENTRY_CATALOG_REDDIT_BOARDS)[number],
-        );
-        const queryIdx = ENTRY_CATALOG_REDDIT_DEMAND_QUERIES.indexOf(
-          query as (typeof ENTRY_CATALOG_REDDIT_DEMAND_QUERIES)[number],
-        );
         return archivePosts({
-          id: `c${boardIdx}q${queryIdx}`,
+          id: archiveFixtureId(board, query),
           title: `wish: ${board}`,
           subreddit: board,
         });

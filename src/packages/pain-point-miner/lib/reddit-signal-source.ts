@@ -78,7 +78,7 @@ function parseArchivePosts(payload: unknown): EvidenceRef[] {
  * Reddit (via archive) Entry Catalog search URL — Arctic Shift posts search
  * for one board × demand query (ADR-0016). Not live reddit.com.
  */
-export function redditArchiveSearchUrl(board: string, query: string): string {
+function redditArchiveSearchUrl(board: string, query: string): string {
   const url = new URL(`${ARCTIC_SHIFT_API_BASE}/api/posts/search`);
   url.searchParams.set("subreddit", board);
   url.searchParams.set("query", query);
@@ -89,8 +89,10 @@ export function redditArchiveSearchUrl(board: string, query: string): string {
 
 /**
  * Reddit (via archive) Entry Catalog Signal Source — primary boards × demand
- * queries via Arctic Shift (ADR-0016). Per-request failures degrade to an empty
- * batch for that URL so one broken archive search does not void the adapter.
+ * queries via Arctic Shift (ADR-0016). Per-request failures skip that board ×
+ * query so one broken archive search does not void the adapter. If every
+ * archive request fails, collect throws so the miner records a degradation
+ * note and other Signal Sources can continue (ADR-0016).
  */
 export function createRedditSignalSource(
   deps: RedditSignalSourceDeps,
@@ -100,9 +102,12 @@ export function createRedditSignalSource(
     async collect() {
       const evidence: EvidenceRef[] = [];
       const seen = new Set<string>();
+      let attempts = 0;
+      let failures = 0;
 
       for (const board of ENTRY_CATALOG_REDDIT_BOARDS) {
         for (const query of ENTRY_CATALOG_REDDIT_DEMAND_QUERIES) {
+          attempts += 1;
           const url = redditArchiveSearchUrl(board, query);
           try {
             const payload = await deps.http.getJson(url);
@@ -113,9 +118,16 @@ export function createRedditSignalSource(
               }
             }
           } catch {
+            failures += 1;
             // Skip this board/query; continue the rest of the catalog.
           }
         }
+      }
+
+      if (attempts > 0 && failures === attempts) {
+        throw new Error(
+          "Reddit (via archive) unavailable: all Entry Catalog archive searches failed",
+        );
       }
 
       return evidence;
