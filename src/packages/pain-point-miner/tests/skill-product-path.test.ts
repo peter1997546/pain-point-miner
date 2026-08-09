@@ -7,8 +7,9 @@
  * - Skill / ANALYSIS guidance — Archive Permalinks for Reddit Brief evidenceLinks
  * - createLiveDiscoveryMiner → Skill handoff → Run Report — Reddit archive Evidence
  *   flows to Builder-openable Archive Permalinks (no SERP / mirror / Skill-only crawl)
- * - Skill / CONTEXT / ADR docs — Intent interview-before-mine contract (ADR-0017);
- *   Script/CLI omit → `{}` remains valid (ADR-0004) and is not the Skill skip path
+ * - Skill / CONTEXT / ADR / README / AGENTS — Intent interview-before-mine contract
+ *   (tickets #56–#58 / ADR-0017); Script/CLI omit → `{}` remains valid (ADR-0004)
+ *   and is not the Skill skip path
  *
  * Product Analysis Pass is Cursor agents — not createLlmAnalysisPass.
  */
@@ -413,7 +414,7 @@ describe("Skill / ANALYSIS guidance — Archive Permalinks (ticket #51)", () => 
   });
 });
 
-describe("Skill Intent interview before mine (ticket #56 / ADR-0017)", () => {
+describe("Skill Intent interview before mine (tickets #56–#58 / ADR-0017)", () => {
   async function readSkill(): Promise<string> {
     return readFile(
       join(REPO_ROOT, ".agents/skills/pain-point-miner/SKILL.md"),
@@ -505,6 +506,39 @@ describe("Skill Intent interview before mine (ticket #56 / ADR-0017)", () => {
     expect(adr0004).toMatch(/empty Intent must still be a valid run/i);
     expect(adr0004).toMatch(/does not excuse skipping the Skill Intent interview/i);
     expect(adr0004).toMatch(/ADR-0017/);
+  });
+
+  it("README product path and AGENTS pointer require guide-then-Script (ticket #57)", async () => {
+    const [readme, agents] = await Promise.all([
+      readFile(join(REPO_ROOT, "README.md"), "utf8"),
+      readFile(join(REPO_ROOT, "AGENTS.md"), "utf8"),
+    ]);
+
+    const skillPath = readme.match(
+      /## Skill[\s\S]*?(?=## |$)/,
+    )?.[0];
+    expect(skillPath).toBeDefined();
+    expect(skillPath).toMatch(/ADR-0017/);
+    expect(skillPath).toMatch(
+      /Guide optional Intent[\s\S]*?wait for explicit fill or skip/i,
+    );
+    expect(skillPath).toMatch(
+      /only then may Intent be empty for the Script/i,
+    );
+
+    // Product-seam “empty valid” language must stay scoped to Script/API input.
+    expect(readme).toMatch(
+      /Empty Intent is a valid Script\/API run input/i,
+    );
+    expect(readme).toMatch(
+      /On the Skill path, empty is only after an explicit Builder skip \(ADR-0017\)/i,
+    );
+    expect(readme).toMatch(
+      /Empty Intent `\{\}` as \*\*Script\*\* run input[\s\S]*?ADR-0017/i,
+    );
+
+    expect(agents).toMatch(/ADR-0017/);
+    expect(agents).toMatch(/Guide Intent then call the Script/i);
   });
 });
 
