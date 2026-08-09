@@ -13,16 +13,16 @@ The job of this tool: start from an Entry Catalog, crawl Signal Sources, Follow-
 _Avoid_: Verifier, restricted search form, brainstormer, competitor-complaint miner (as the primary job)
 
 **Script**:
-The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies the Count Gate / Saturation Stop — so raw Evidence never has to be stuffed into an agent context window. Required in v1 because a pure Skill path would drown the agent in volume. When a Signal Source’s live edge is blocked, the Script switches access channel (e.g. Reddit (via archive)); it is not replaced by Skill-only crawl.
-_Avoid_: Notebook one-off (unless it is the Script), skill-only crawl, “pure Skill” as the fix for source access
+The out-of-band pipeline that crawls, Follow-on Fetches, clusters, and applies the Count Gate / Saturation Stop — so raw Evidence never has to be stuffed into an agent context window. Required in v1 because a pure Skill path would drown the agent in volume. When a Signal Source’s live edge is blocked, the Script switches access channel (e.g. Reddit (via archive)); it is not replaced by Skill-only crawl. Accepts optional / empty Intent as run input (CLI omit or `{}`); it does not interview the Builder.
+_Avoid_: Notebook one-off (unless it is the Script), skill-only crawl, “pure Skill” as the fix for source access, Script-side Intent interview
 
 **Skill**:
-Agent-facing orchestration: interview optional Intent, call the Script for **live** mining, fan out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — then hand outcomes to a Report Agent to assemble the Run Report. Never the entire crawl corpus in one prompt.
-_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode, Skill-side reimplementation of Entry Catalog crawl to bypass Script
+Agent-facing orchestration: **guide** the Builder on Intent (what it is, what each field is for, short illustrative examples OK; say they may leave blank if nothing comes to mind — do not recommend empty), **wait for an explicit fill or skip**, then call the Script for **live** mining, fan out a **per-cluster** Analysis Pass — one Candidate Cluster at a time (multi-agent OK), each agent seeing only that cluster’s Evidence plus needed Brief fields — then hand outcomes to a Report Agent to assemble the Run Report. Never the entire crawl corpus in one prompt.
+_Avoid_: Skill-only product, pasting full crawl into chat, single-shot “analyze everything” dump, fixture mining as a real-usage mode, Skill-side reimplementation of Entry Catalog crawl to bypass Script, skipping Intent guide and defaulting to empty
 
 **Intent**:
-Optional free-text preference notes the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is valid. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
-_Avoid_: Intake form, requirements form, restriction sheet, treating Intent as crawl config
+Optional free-text preference notes the Builder *may* fill: Theme, product shape, constraints, hard nos, and success definition. Empty Intent is a valid **Script** run input when omitted or `{}`. On the **Skill** path, empty is only after the Builder explicitly skips / leaves fields unfilled — “empty is valid” does not mean the Skill may skip the interview. Filled fields inform the Analysis Pass and Run Report assembly only (e.g. shaping Delivery Cost commentary) — they do not whitelist, drop, or invent Signal Sources / crawl targets; deepening is via Follow-on Fetch of concrete pages already found.
+_Avoid_: Intake form, requirements form, restriction sheet, treating Intent as crawl config, treating empty-Intent validity as leave to skip the Skill interview
 
 **Theme**:
 An optional broad directional preference (e.g. “AI automation”, “提升效率”). Not a use case, workflow, or Target Market.
