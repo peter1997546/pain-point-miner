@@ -117,7 +117,7 @@ Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-
 
 **Product path (Cloud Agent):**
 
-1. Interview optional Intent (Theme, product shape, constraints, hard nos, success definition) — skip-all → empty Intent.
+1. Guide optional Intent (Theme, product shape, constraints, hard nos, success definition): explain fields + short examples; wait for explicit fill or skip — only then may Intent be empty for the Script (ADR-0017).
 2. Live-mine via Script (`npm run cli -- --live --format json --handoff skill --out …/handoff.json`). Fixtures are tests-only.
 3. Fan out Analysis Pass **one gated Candidate Cluster at a time in Cursor sub-agents** (parallel OK); each step sees only that cluster’s Evidence — never the full scrape. Hosted LLM Analysis (`createLlmAnalysisPass`) is **not** the product surface (ADR-0013).
 4. Report Agent integrates outcomes with `writeSkillRunFolder` / `assembleRunReport` (uses `formatRunReport`) into a time-based run folder: `handoff.json` + `report.md`. Does not re-judge Hollow vs Brief or invent Evidence.

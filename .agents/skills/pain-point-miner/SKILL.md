@@ -12,32 +12,35 @@ description: >
 
 v1 is **Script + Skill** (ADR-0009). The Script owns crawl → Follow-on → Store Second Pass → cluster → Count Gate / Saturation Stop. This Skill **interviews Intent**, runs the Script **live**, fans out Analysis Pass **one gated Candidate Cluster at a time** in Cursor agents (ADR-0011 / ADR-0013), then hands outcomes to a **Report Agent** for the **Run Report** (ADR-0015).
 
-Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009`](../../../docs/adr/0009-script-under-skill.md), [`docs/adr/0011`](../../../docs/adr/0011-per-cluster-analysis-pass.md), [`docs/adr/0012`](../../../docs/adr/0012-free-local-embeddings-in-snapshot.md), [`docs/adr/0013`](../../../docs/adr/0013-analysis-pass-agent-only.md), [`docs/adr/0014`](../../../docs/adr/0014-live-mining-for-real-usage.md), [`docs/adr/0015`](../../../docs/adr/0015-run-report-via-report-agent.md), [`docs/adr/0016`](../../../docs/adr/0016-reddit-via-archive-not-live.md).
+Vocabulary: root [`CONTEXT.md`](../../../CONTEXT.md). Decisions: [`docs/adr/0009`](../../../docs/adr/0009-script-under-skill.md), [`docs/adr/0011`](../../../docs/adr/0011-per-cluster-analysis-pass.md), [`docs/adr/0012`](../../../docs/adr/0012-free-local-embeddings-in-snapshot.md), [`docs/adr/0013`](../../../docs/adr/0013-analysis-pass-agent-only.md), [`docs/adr/0014`](../../../docs/adr/0014-live-mining-for-real-usage.md), [`docs/adr/0015`](../../../docs/adr/0015-run-report-via-report-agent.md), [`docs/adr/0016`](../../../docs/adr/0016-reddit-via-archive-not-live.md), [`docs/adr/0017`](../../../docs/adr/0017-skill-must-interview-intent.md).
 
 ## Hard rules
 
 1. **Real usage = live mining** (ADR-0014). Fixtures are for tests/CI only — never offer fixture crawl as the Builder’s product path.
-2. **Call the Script** for mining. Do not re-implement crawl, Follow-on, clustering, or gates in chat. Do not switch to Skill-only crawl to “fix” Reddit access — Reddit cold-start/Follow-on is **Reddit (via archive)** inside the Script (ADR-0016).
-3. **Per-cluster Analysis Pass only**, in **Cursor agents** (ADR-0013) — not a product LLM HTTP adapter. Each subagent receives **one** gated Candidate Cluster’s Evidence plus Intent / Brief fields for that cluster.
-4. **Never** paste the full scrape corpus, all Candidate Clusters, or the entire `evidence[]` array into a single Analysis Pass prompt.
-5. **Embeddings are free/local** (ADR-0012) — do not require a paid embedding API for the product path. Prefer models baked into the Cloud environment snapshot.
-6. **Deliver a Run Report** (polished Markdown in a time-based run folder via `formatRunReport` / `writeSkillRunFolder`), not a raw `RunArtifact` dump as the Builder-facing output (ADR-0015).
+2. **Interview before mine** (ADR-0017). Before calling the Script, guide the Builder on Intent: explain what Intent is and what each functional field is for; short illustrative examples OK (not crawl-target picks); say they may leave fields blank if nothing comes to mind — do not recommend empty. Call the Script only after the Builder explicitly fills fields or says they are skipping / not filling them. Do not claim you will run with empty Intent until that explicit choice.
+3. **Call the Script** for mining. Do not re-implement crawl, Follow-on, clustering, or gates in chat. Do not switch to Skill-only crawl to “fix” Reddit access — Reddit cold-start/Follow-on is **Reddit (via archive)** inside the Script (ADR-0016). Script/CLI may omit Intent (`{}`) after the interview; the Script does not interview.
+4. **Per-cluster Analysis Pass only**, in **Cursor agents** (ADR-0013) — not a product LLM HTTP adapter. Each subagent receives **one** gated Candidate Cluster’s Evidence plus Intent / Brief fields for that cluster.
+5. **Never** paste the full scrape corpus, all Candidate Clusters, or the entire `evidence[]` array into a single Analysis Pass prompt.
+6. **Embeddings are free/local** (ADR-0012) — do not require a paid embedding API for the product path. Prefer models baked into the Cloud environment snapshot.
+7. **Deliver a Run Report** (polished Markdown in a time-based run folder via `formatRunReport` / `writeSkillRunFolder`), not a raw `RunArtifact` dump as the Builder-facing output (ADR-0015).
 
 ## Process
 
 ### 0. Interview Intent (optional answers)
 
-Before mining, grill the Builder on **functional Intent** only — explain each field; they may skip any or all (empty Intent → defaults):
+Before mining, **guide** the Builder on **functional Intent** — explain the concept and each field, with a short example per field so they know what they can answer. Say they may leave any or all blank if nothing comes to mind; do **not** recommend empty or announce a default-empty run. **Stop and wait** for an explicit fill or skip (“不填” / skip / equivalent) before step 1.
 
-| Field | Role |
-| --- | --- |
-| Theme | Broad steer (e.g. “AI automation”) |
-| product shape | Preference note for Analysis / Run Report |
-| constraints | Preference note |
-| hard nos | Preference note |
-| success definition | Preference note |
+| Field | Role | Example (illustrative only) |
+| --- | --- | --- |
+| Theme | Broad steer | “AI automation” |
+| product shape | Preference note for Analysis / Run Report | “solo-dev SaaS, not marketplace” |
+| constraints | Preference note | “no mobile app in v1” |
+| hard nos | Preference note | “no crypto / no ads business” |
+| success definition | Preference note | “I’d pay for a weekly shortlist of real pains” |
 
-Do **not** interrogate Count Gate / Saturation Stop / Competition Filter / CLI plumbing unless the Builder volunteers overrides. Filled Intent must not whitelist or invent crawl targets (ADR-0004).
+Do **not** interrogate Count Gate / Saturation Stop / Competition Filter / CLI plumbing unless the Builder volunteers overrides. Filled Intent must not whitelist or invent crawl targets (ADR-0004). Empty Intent after an explicit skip is valid Script input (ADR-0004); skipping this guide is not (ADR-0017).
+
+**Done when:** the Builder has explicitly filled at least one field or explicitly skipped / left Intent blank.
 
 Create a time-based run folder for this run with `prepareSkillRunFolder()` (creates `.pain-point-miner/runs/<timestamp>/` on disk) and keep handoff + Run Report under it.
 
