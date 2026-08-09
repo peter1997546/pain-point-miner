@@ -1,5 +1,5 @@
 /**
- * Seams under test (ticket #38 / #51 / Seam B / ADR-0013–0016):
+ * Seams under test (ticket #38 / #51 / #56 / Seam B / ADR-0013–0017):
  * - liveSourceDegradationNotes — token-gated skips available for the Run Report
  * - assembleRunReport / writeSkillRunFolder — Report Agent integrates Analysis
  *   outcomes into a time-based run folder (handoff.json + report.md via formatter)
@@ -7,6 +7,8 @@
  * - Skill / ANALYSIS guidance — Archive Permalinks for Reddit Brief evidenceLinks
  * - createLiveDiscoveryMiner → Skill handoff → Run Report — Reddit archive Evidence
  *   flows to Builder-openable Archive Permalinks (no SERP / mirror / Skill-only crawl)
+ * - Skill / CONTEXT / ADR docs — Intent interview-before-mine contract (ADR-0017);
+ *   Script/CLI omit → `{}` remains valid (ADR-0004) and is not the Skill skip path
  *
  * Product Analysis Pass is Cursor agents — not createLlmAnalysisPass.
  */
@@ -408,6 +410,100 @@ describe("Skill / ANALYSIS guidance — Archive Permalinks (ticket #51)", () => 
     // Rejected cold-start / access bypasses must not be product fallbacks.
     expect(skill).toMatch(/Call the Script/);
     expect(skill).not.toMatch(/site:reddit\.com|libreddit|redlib|teddit/i);
+  });
+});
+
+describe("Skill Intent interview before mine (ticket #56 / ADR-0017)", () => {
+  async function readSkill(): Promise<string> {
+    return readFile(
+      join(REPO_ROOT, ".agents/skills/pain-point-miner/SKILL.md"),
+      "utf8",
+    );
+  }
+
+  it("Hard rules keep Interview before mine and forbid unilateral empty-Intent defaults", async () => {
+    const skill = await readSkill();
+    const hardRules = skill.match(
+      /## Hard rules[\s\S]*?(?=## Process|$)/,
+    )?.[0];
+    expect(hardRules).toBeDefined();
+    expect(hardRules).toMatch(/Interview before mine/i);
+    expect(hardRules).toMatch(/ADR-0017/);
+    expect(hardRules).toMatch(/do not recommend empty/i);
+    expect(hardRules).toMatch(
+      /Do not claim you will run with empty Intent/i,
+    );
+    expect(hardRules).toMatch(
+      /explicitly fills? fields? or says? they are skipping/i,
+    );
+  });
+
+  it("step 0 guides functional Intent fields, allows blank, and waits for explicit fill or skip", async () => {
+    const skill = await readSkill();
+    const step0 = skill.match(
+      /### 0\. Interview Intent[\s\S]*?(?=### 1\.|$)/,
+    )?.[0];
+    expect(step0).toBeDefined();
+    expect(step0).toMatch(/Theme/);
+    expect(step0).toMatch(/product shape/i);
+    expect(step0).toMatch(/constraints/i);
+    expect(step0).toMatch(/hard nos/i);
+    expect(step0).toMatch(/success definition/i);
+    expect(step0).toMatch(/illustrative/i);
+    expect(step0).toMatch(/leave (any or all |fields )?blank|may leave/i);
+    expect(step0).toMatch(/do \*\*not\*\* recommend empty|do not recommend empty/i);
+    expect(step0).toMatch(/Stop and wait|wait.*explicit/i);
+    expect(step0).toMatch(/不填|skip/i);
+    expect(step0).toMatch(
+      /\*\*Done when:\*\*[^\n]*(explicitly filled|explicit fill|explicitly skipped)/i,
+    );
+    // Leave gate/filter overrides out of the Intent interview unless volunteered.
+    expect(step0).toMatch(
+      /Do \*\*not\*\* interrogate Count Gate \/ Saturation Stop \/ Competition Filter/i,
+    );
+    expect(step0).not.toMatch(
+      /\|\s*(Count Gate|Saturation Stop|Competition Filter)\s*\|/,
+    );
+  });
+
+  it("Skill acknowledges Script/CLI may omit Intent after the interview without interviewing", async () => {
+    const skill = await readSkill();
+    expect(skill).toMatch(/Script\/CLI may omit Intent/);
+    expect(skill).toMatch(/does not interview/i);
+    expect(skill).toMatch(/Wire Intent flags the Builder actually answered/);
+  });
+
+  it("CONTEXT and ADR-0017 / ADR-0004 keep Skill interview vs Script empty-Intent split", async () => {
+    const [context, adr0017, adr0004] = await Promise.all([
+      readFile(join(REPO_ROOT, "CONTEXT.md"), "utf8"),
+      readFile(
+        join(REPO_ROOT, "docs/adr/0017-skill-must-interview-intent.md"),
+        "utf8",
+      ),
+      readFile(
+        join(REPO_ROOT, "docs/adr/0004-discovery-over-restriction.md"),
+        "utf8",
+      ),
+    ]);
+
+    expect(context).toMatch(
+      /\*\*Skill\*\*:[\s\S]*?guide[\s\S]*?Intent[\s\S]*?explicit fill or skip/i,
+    );
+    expect(context).toMatch(
+      /\*\*Script\*\*:[\s\S]*?does not interview the Builder/i,
+    );
+    expect(context).toMatch(
+      /\*\*Intent\*\*:[\s\S]*?valid \*\*Script\*\* run input[\s\S]*?does not mean the Skill may skip the interview/i,
+    );
+
+    expect(adr0017).toMatch(/interview Intent before invoking Script/i);
+    expect(adr0017).toMatch(/do not recommend empty/i);
+    expect(adr0017).toMatch(/explicit fill or skip/i);
+    expect(adr0017).toMatch(/does not interview/i);
+
+    expect(adr0004).toMatch(/empty Intent must still be a valid run/i);
+    expect(adr0004).toMatch(/does not excuse skipping the Skill Intent interview/i);
+    expect(adr0004).toMatch(/ADR-0017/);
   });
 });
 

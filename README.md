@@ -113,7 +113,7 @@ npm run cli -- --live --format json --handoff skill \
 
 ## Skill (Script + per-cluster fan-out + Run Report)
 
-Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-point-miner/SKILL.md) (ADR-0009 / ADR-0011 / ADR-0013–0015).
+Agent Skill: [`.agents/skills/pain-point-miner/SKILL.md`](./.agents/skills/pain-point-miner/SKILL.md) (ADR-0009 / ADR-0011 / ADR-0013–0015 / ADR-0017).
 
 **Product path (Cloud Agent):**
 
